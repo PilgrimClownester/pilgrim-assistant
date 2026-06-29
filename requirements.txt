@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+openai
+python-dotenv
+pydantic
+streamlit
+requests
+lunar_python
+pillow

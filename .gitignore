@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+data/logs/*
+!data/logs/.gitkeep
+data/vector_db/*
+!data/vector_db/.gitkeep
+data/profile.json
+backend/db/*.db
+.DS_Store
