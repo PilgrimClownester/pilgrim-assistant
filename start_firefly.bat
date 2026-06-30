@@ -1,3 +1,3 @@
 @echo off
 cd /d "%~dp0"
-python desktop_app.py
+python run_firefly.py

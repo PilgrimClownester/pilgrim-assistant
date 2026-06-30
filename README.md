@@ -1,43 +1,47 @@
 # Firefly
 
-Firefly 是一个本地运行、接入 DeepSeek API 的私人八字命理与自我反思助手。当前主线是“本地生辰八字排盘 + 结构化命理分析 + DeepSeek 风格化解读”：四柱、五行、十神、大运、流年由本地程序生成，DeepSeek 只负责解释结构化数据。
+Firefly 是一个本地运行、接入 DeepSeek API 的**桌面陪伴型私人助手**。
 
-塔罗、易经、每日运势仍作为 Legacy 功能保留。
+长期方向：深色紫色主题、半透明毛玻璃 UI、左侧功能导航、右侧信息面板、桌面悬浮小人、可扩展的插件体系。八字命理作为工具插件之一，不是主入口。
+
+当前主线：React + Electron 桌面应用 + FastAPI 后端 + DeepSeek API。
 
 ## 启动方式
 
-推荐一键桌面启动，不需要进入浏览器，也不需要单独启动后端：
+### 桌面应用（推荐，一条指令）
+
+Windows：
 
 ```powershell
 cd D:\zxy\Firefly\pilgrim-assistant
 .\start_firefly.bat
 ```
 
-兼容旧入口：
+macOS / Linux：
+
+```bash
+cd pilgrim-assistant
+./start_firefly.sh
+```
+
+兼容旧命令：
 
 ```powershell
 .\firefly.bat
 ```
 
-运行后会弹出 Firefly 桌面对话框。它会自动检查本地 FastAPI 后端；如果后端没启动，会在后台启动。默认优先使用 `127.0.0.1:8000`，如果端口不可用，会自动尝试备用端口。
+这个入口会自动启动 FastAPI 后端，然后打开 Electron 桌面窗口。Vite 只作为桌面窗口的开发服务使用，不需要手动用浏览器打开。
 
-也可以直接运行：
+### 兼容旧入口
 
-```powershell
-python desktop_app.py
+```bash
+python3 desktop_app.py    # Tkinter 桌面版（旧）
 ```
 
-保留浏览器版本：
+### 浏览器版（旧）
 
-```powershell
+```bash
 uvicorn backend.main:app --reload --port 8000
-streamlit run frontend/streamlit_app.py
-```
-
-如果浏览器版本需要使用其他后端地址：
-
-```powershell
-$env:FIREFLY_API_BASE="http://127.0.0.1:8001"
 streamlit run frontend/streamlit_app.py
 ```
 

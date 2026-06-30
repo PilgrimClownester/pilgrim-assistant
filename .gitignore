@@ -8,5 +8,25 @@ data/logs/*
 data/vector_db/*
 !data/vector_db/.gitkeep
 data/profile.json
+data/productivity.json
 backend/db/*.db
 .DS_Store
+
+# dependencies
+node_modules/
+frontend-react/node_modules/
+
+# build outputs
+dist/
+frontend-react/dist/
+frontend-react/dist-electron/
+frontend-react/*.tsbuildinfo
+build/
+.cache/
+
+# local config
+.env
+.vscode/
+
+# logs
+*.log

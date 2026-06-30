@@ -1,0 +1,85 @@
+.desktop-pet {
+  position: fixed;
+  z-index: 9999;
+  cursor: grab;
+  user-select: none;
+  transition: filter 0.2s ease;
+}
+
+.desktop-pet:hover {
+  filter: drop-shadow(0 0 14px rgba(93, 185, 232, 0.45));
+}
+
+.desktop-pet:active {
+  cursor: grabbing;
+}
+
+.desktop-pet--window {
+  left: 0;
+  top: 0;
+  padding: 0;
+  cursor: pointer;
+  width: 88px;
+  height: 88px;
+  background: transparent;
+  border: none;
+  overflow: hidden;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+}
+
+.desktop-pet--window:active {
+  cursor: pointer;
+}
+
+.pet-image {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  object-fit: cover;
+  border: 2px solid var(--border-soft);
+  background: rgba(246, 252, 255, 0.7);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(80, 150, 180, 0.22);
+}
+
+.pet-image--window {
+  width: 88px;
+  height: 88px;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  object-fit: contain;
+}
+
+.pet-menu {
+  position: fixed;
+  z-index: 10000;
+  background: rgba(246, 252, 255, 0.92);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 30px rgba(80, 150, 180, 0.2);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+  animation: fadeIn 0.2s ease;
+}
+
+.pet-menu button {
+  padding: 10px 16px;
+  color: var(--text-main);
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+  text-align: left;
+  width: 100%;
+}
+
+.pet-menu button:hover {
+  background: rgba(93, 185, 232, 0.12);
+}

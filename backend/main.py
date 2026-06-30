@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from backend.bazi.chart import build_bazi_chart
@@ -8,17 +9,39 @@ from backend.fortune.daily import build_daily_user_prompt, generate_daily_seed
 from backend.fortune.tarot import build_tarot_user_prompt, draw_tarot
 from backend.fortune.yijing import build_yijing_user_prompt, cast_yijing
 from backend.profile import UserProfile, build_profile_context, get_profile, save_profile
+from backend.productivity import (
+    ScheduleCreate,
+    ScheduleUpdate,
+    TodoCreate,
+    TodoUpdate,
+    create_schedule_event,
+    create_todo,
+    delete_schedule_event,
+    delete_todo,
+    list_schedule,
+    list_todos,
+    update_schedule_event,
+    update_todo,
+)
 from backend.prompts.bazi_prompt import (
     BAZI_SYSTEM_PROMPT,
     build_bazi_analysis_prompt,
     build_bazi_question_prompt,
 )
-from backend.prompts.base_prompt import BASE_SYSTEM_PROMPT
+from backend.prompts.base_prompt import CHAT_SYSTEM_PROMPT
 from backend.prompts.fortune_prompt import FORTUNE_SYSTEM_PROMPT
-from backend.prompts.starfire_persona import STARFIRE_CHAT_PERSONA_PROMPT, STARFIRE_PERSONA_PROMPT
+from backend.prompts.starfire_persona import FIREFLY_PARTNER_PROMPT
 
 
 app = FastAPI(title="Firefly", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "app://."],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class TarotRequest(BaseModel):
@@ -57,12 +80,63 @@ def update_profile(profile: UserProfile) -> UserProfile:
     return save_profile(profile)
 
 
+@app.get("/todos")
+def read_todos() -> dict[str, object]:
+    return {"items": list_todos()}
+
+
+@app.post("/todos")
+def add_todo(item: TodoCreate) -> dict[str, object]:
+    return {"item": create_todo(item)}
+
+
+@app.patch("/todos/{todo_id}")
+def patch_todo(todo_id: str, patch: TodoUpdate) -> dict[str, object]:
+    item = update_todo(todo_id, patch)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Todo not found")
+    return {"item": item}
+
+
+@app.delete("/todos/{todo_id}")
+def remove_todo(todo_id: str) -> dict[str, object]:
+    if not delete_todo(todo_id):
+        raise HTTPException(status_code=404, detail="Todo not found")
+    return {"ok": True}
+
+
+@app.get("/schedule")
+def read_schedule() -> dict[str, object]:
+    return {"items": list_schedule()}
+
+
+@app.post("/schedule")
+def add_schedule_event(item: ScheduleCreate) -> dict[str, object]:
+    return {"item": create_schedule_event(item)}
+
+
+@app.patch("/schedule/{event_id}")
+def patch_schedule_event(event_id: str, patch: ScheduleUpdate) -> dict[str, object]:
+    item = update_schedule_event(event_id, patch)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Schedule event not found")
+    return {"item": item}
+
+
+@app.delete("/schedule/{event_id}")
+def remove_schedule_event(event_id: str) -> dict[str, object]:
+    if not delete_schedule_event(event_id):
+        raise HTTPException(status_code=404, detail="Schedule event not found")
+    return {"ok": True}
+
+
 def _ask_fortune(user_prompt: str) -> str:
     prompt_with_profile = f"{build_profile_context()}\n\n{user_prompt}"
     try:
         return ask_deepseek(
             [
                 {"role": "system", "content": FORTUNE_SYSTEM_PROMPT},
+                {"role": "system", "content": FIREFLY_PARTNER_PROMPT},
                 {"role": "user", "content": prompt_with_profile},
             ],
             temperature=0.8,
@@ -77,7 +151,7 @@ def _ask_bazi(user_prompt: str) -> str:
         return ask_deepseek(
             [
                 {"role": "system", "content": BAZI_SYSTEM_PROMPT},
-                {"role": "system", "content": STARFIRE_PERSONA_PROMPT},
+                {"role": "system", "content": FIREFLY_PARTNER_PROMPT},
                 {"role": "user", "content": prompt_with_profile},
             ],
             temperature=0.7,
@@ -92,8 +166,8 @@ def chat(request: ChatRequest) -> dict[str, object]:
     try:
         answer = ask_deepseek(
             [
-                {"role": "system", "content": BASE_SYSTEM_PROMPT},
-                {"role": "system", "content": STARFIRE_CHAT_PERSONA_PROMPT},
+                {"role": "system", "content": CHAT_SYSTEM_PROMPT},
+                {"role": "system", "content": FIREFLY_PARTNER_PROMPT},
                 {"role": "user", "content": prompt_with_profile},
             ],
             temperature=0.7,

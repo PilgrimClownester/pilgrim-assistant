@@ -1,0 +1,40 @@
+import type { Message } from '../../types';
+import './ChatView.css';
+
+interface MessageBubbleProps {
+  message: Message;
+}
+
+function MessageBubble({ message }: MessageBubbleProps) {
+  if (message.role === 'error') {
+    return (
+      <div className="message-row message-row--error">
+        <div className="message-bubble message-bubble--error">
+          ⚠️ {message.content}
+        </div>
+      </div>
+    );
+  }
+
+  const isUser = message.role === 'user';
+
+  return (
+    <div className={`message-row ${isUser ? 'message-row--user' : 'message-row--assistant'}`}>
+      {!isUser && (
+        <div className="message-avatar">
+          <img src="/assets/firefly2.png" alt="Firefly" width={36} height={36} />
+        </div>
+      )}
+      <div className={`message-bubble ${isUser ? 'message-bubble--user' : 'message-bubble--assistant'}`}>
+        {message.content}
+      </div>
+      {isUser && (
+        <div className="message-avatar message-avatar--user">
+          <div className="avatar-placeholder">P</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default MessageBubble;

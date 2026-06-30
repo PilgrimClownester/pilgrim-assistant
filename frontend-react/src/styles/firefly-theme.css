@@ -1,0 +1,56 @@
+:root {
+  /* Backgrounds */
+  --bg-sky: #EAF6FF;
+  --bg-panel: rgba(246, 252, 255, 0.88);
+  --bg-panel-solid: #F6FCFF;
+
+  /* Primary blues */
+  --primary-blue: #5DB9E8;
+  --primary-cyan: #75DCE8;
+  --mint: #8BE6D4;
+  --soft-blue: #CFEFFF;
+
+  /* Dark accents */
+  --deep-blue: #17364D;
+  --text-main: #18384A;
+  --text-muted: #6D8796;
+
+  /* Accent */
+  --gold-accent: #D7B56D;
+
+  /* Chat bubbles */
+  --bubble-user: #7DDBE8;
+  --bubble-assistant: rgba(245, 253, 255, 0.92);
+
+  /* Borders & shadows */
+  --border-soft: rgba(117, 220, 232, 0.55);
+  --shadow-soft: rgba(80, 150, 180, 0.22);
+
+  /* Frosted glass (light) */
+  --glass-bg: rgba(246, 252, 255, 0.78);
+  --glass-border: rgba(117, 220, 232, 0.45);
+  --glass-blur: 14px;
+  --glass-shadow: 0 8px 28px rgba(80, 150, 180, 0.18);
+
+  /* Borders & radii */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+
+  /* Typography */
+  --font-family: 'Inter', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5rem;
+
+  /* Layout */
+  --sidebar-width: 220px;
+  --right-panel-width: 260px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+}
