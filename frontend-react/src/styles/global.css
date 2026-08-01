@@ -15,7 +15,10 @@ body {
   font-family: var(--font-family);
   font-size: var(--font-size-base);
   color: var(--text-main);
-  background: var(--bg-sky);
+  background:
+    radial-gradient(circle at 78% 8%, rgba(105, 216, 194, 0.2), transparent 30%),
+    radial-gradient(circle at 18% 90%, rgba(63, 175, 217, 0.16), transparent 36%),
+    var(--bg-sky);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -50,12 +53,26 @@ button {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
+  transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-input, textarea {
+input, textarea, select {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(35, 140, 184, 0.7) !important;
+  outline-offset: 2px;
+}
+
+::selection {
+  color: var(--deep-blue);
+  background: rgba(95, 210, 223, 0.34);
 }
 
 a {

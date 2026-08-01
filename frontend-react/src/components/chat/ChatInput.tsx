@@ -14,6 +14,7 @@ function ChatInput({ onSend, disabled }: ChatInputProps) {
     if (!trimmed || disabled) return;
     onSend(trimmed);
     setText('');
+    if (inputRef.current) inputRef.current.style.height = 'auto';
     inputRef.current?.focus();
   };
 
@@ -24,16 +25,26 @@ function ChatInput({ onSend, disabled }: ChatInputProps) {
     }
   };
 
+  const updateText = (value: string) => {
+    setText(value);
+    requestAnimationFrame(() => {
+      if (!inputRef.current) return;
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 112)}px`;
+    });
+  };
+
   return (
     <div className="chat-input-bar">
       <div className="chat-input-wrapper">
+        <span className="chat-input-spark" aria-hidden="true">✦</span>
         <textarea
           ref={inputRef}
           className="chat-input"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => updateText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
+          placeholder="和流萤说点什么…"
           rows={1}
           disabled={disabled}
         />
@@ -42,7 +53,7 @@ function ChatInput({ onSend, disabled }: ChatInputProps) {
           onClick={handleSend}
           disabled={disabled || !text.trim()}
         >
-          发送
+          <span className="chat-send-label">发送</span><span className="chat-send-icon" aria-hidden="true">↑</span>
         </button>
       </div>
     </div>

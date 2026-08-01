@@ -1,0 +1,67 @@
+.settings-bazi-archive {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 0 0, rgba(255, 224, 154, 0.13), transparent 34%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(239, 250, 250, 0.84));
+}
+
+.settings-archive-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.settings-archive-heading span {
+  display: block;
+  margin-bottom: 4px;
+  color: #a17b3d;
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.15em;
+}
+
+.settings-archive-heading h3 {
+  color: var(--deep-blue);
+  font-size: 1rem;
+}
+
+.settings-archive-heading p {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.settings-archive-button {
+  flex: 0 0 auto;
+  padding: 9px 13px;
+  color: #765629;
+  font-size: 0.72rem;
+  font-weight: 760;
+  border: 1px solid rgba(190, 149, 74, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 248, 229, 0.78);
+}
+
+.settings-archive-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(190, 149, 74, 0.52);
+  box-shadow: 0 8px 16px rgba(126, 93, 40, 0.1);
+}
+
+.settings-archive-button:disabled { cursor: wait; opacity: 0.58; }
+.settings-archive-error { margin-top: 13px; color: #b04b55; font-size: 0.72rem; }
+.settings-chart-wrap { margin-top: 18px; padding-top: 18px; border-top: 1px solid rgba(190, 149, 74, 0.18); }
+.settings-data-archive { grid-column:1/-1; background:linear-gradient(145deg,rgba(255,255,255,.9),rgba(239,235,252,.84)); }
+.settings-data-archive .settings-archive-heading span { color:#8066b0; }
+.settings-data-archive .settings-archive-button { color:#68538e; border-color:rgba(122,91,174,.25); background:rgba(244,238,255,.84); }
+.settings-archive-status { margin:12px 0 0; color:#6b7f84; font-size:.68rem; }
+.settings-memory { grid-column:1/-1; background:linear-gradient(145deg,rgba(255,255,255,.9),rgba(235,247,246,.82)); }.settings-memory-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }.settings-memory-heading > div > span { color:#4d9ba2; font-size:.58rem; font-weight:850; letter-spacing:.15em; }.settings-memory-heading h3 { margin-top:4px; color:var(--deep-blue); font-size:1rem; }.settings-memory-heading p { margin-top:5px; color:var(--text-muted); font-size:.7rem; line-height:1.5; }.settings-memory-heading em { padding:5px 8px; color:#4b7d83; font-size:.61rem; font-style:normal; border-radius:999px; background:#e1f2ef; }.settings-memory-compose { display:grid; grid-template-columns:110px minmax(0,1fr) 72px; gap:8px; margin-top:16px; }.settings-memory-compose select,.settings-memory-compose input { min-width:0; padding:9px 10px; color:#42636b; font-size:.7rem; border:1px solid rgba(70,159,175,.18); border-radius:10px; outline:0; background:rgba(255,255,255,.68); }.settings-memory-compose button { color:white; font-size:.68rem; font-weight:800; border-radius:10px; background:linear-gradient(135deg,#449fb8,#46ad96); }.settings-memory-compose button:disabled { opacity:.4; }.settings-memory-list { display:grid; gap:7px; margin-top:13px; }.settings-memory-list article { display:grid; grid-template-columns:45px minmax(0,1fr) 28px; align-items:center; gap:9px; padding:9px 10px; border:1px solid rgba(69,157,173,.14); border-radius:11px; background:rgba(255,255,255,.56); }.settings-memory-list article > span { padding:3px 5px; color:#4d7d83; font-size:.56rem; text-align:center; border-radius:7px; background:#e3f0ef; }.settings-memory-list article p { color:#506c74; font-size:.69rem; line-height:1.45; }.settings-memory-list article button { display:grid; width:26px; height:26px; place-items:center; color:#a27871; font-size:1rem; border-radius:8px; }.settings-memory-list article button:hover { color:#b85148; background:#f8e8e5; }.settings-memory-empty { padding:18px; color:#81969b; font-size:.68rem; text-align:center; }.settings-memory-error { margin-top:10px; color:#b44f49; font-size:.67rem; }
+
+@media (max-width: 640px) {
+  .settings-archive-heading { align-items: flex-start; flex-direction: column; }
+  .settings-archive-button { width: 100%; }
+  .settings-memory-compose { grid-template-columns:1fr; }
+}

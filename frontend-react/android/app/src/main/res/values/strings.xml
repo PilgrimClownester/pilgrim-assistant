@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Firefly</string>
+    <string name="title_activity_main">Firefly</string>
+    <string name="package_name">com.firefly.assistant</string>
+    <string name="custom_url_scheme">com.firefly.assistant</string>
+</resources>

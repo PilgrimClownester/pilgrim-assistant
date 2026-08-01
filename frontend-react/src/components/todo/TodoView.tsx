@@ -1,45 +1,56 @@
 import { useEffect, useMemo, useState } from 'react';
-import FrostedCard from '../shared/FrostedCard';
 import { createTodo, deleteTodo, getTodos, updateTodo } from '../../api/client';
 import type { TodoItem } from '../../types';
+import './TodoView.css';
 
-const priorityLabel = {
-  high: '高',
-  medium: '中',
-  low: '低',
+type TodoFilter = 'active' | 'all' | 'done';
+
+const priorityMeta = {
+  high: { label: '重要', mark: '!' },
+  medium: { label: '常规', mark: '·' },
+  low: { label: '稍后', mark: '↓' },
 };
 
-const priorityRank = {
-  high: 0,
-  medium: 1,
-  low: 2,
-};
+const priorityRank = { high: 0, medium: 1, low: 2 };
 
-function TodoView() {
+function localToday() {
+  const now = new Date();
+  return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+}
+
+function TodoView({ onStartFocus }: { onStartFocus?: (title: string) => void }) {
   const [items, setItems] = useState<TodoItem[]>([]);
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<TodoItem['priority']>('medium');
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
-  const [filter, setFilter] = useState<'active' | 'all' | 'done'>('active');
+  const [filter, setFilter] = useState<TodoFilter>('active');
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const load = async () => {
-    try {
-      const data = await getTodos() as { items: TodoItem[] };
-      setItems(data.items);
-      setError('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    load();
+    let mounted = true;
+    const load = (initial = false) => getTodos()
+      .then((data) => { if (mounted) { setItems((data as { items: TodoItem[] }).items); setError(''); } })
+      .catch((err) => { if (mounted && initial) setError(err instanceof Error ? err.message : '加载失败'); })
+      .finally(() => { if (mounted && initial) setLoading(false); });
+    load(true);
+    const timer = window.setInterval(() => load(), 12_000);
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { mounted = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
   }, []);
+
+  const stats = useMemo(() => {
+    const today = localToday();
+    const active = items.filter((item) => !item.done);
+    const done = items.filter((item) => item.done);
+    const todayItems = items.filter((item) => item.due_date === today);
+    const urgent = active.filter((item) => item.priority === 'high' || Boolean(item.due_date && item.due_date <= today));
+    const progress = items.length ? Math.round((done.length / items.length) * 100) : 0;
+    return { active: active.length, done: done.length, today: todayItems.length, urgent: urgent.length, progress };
+  }, [items]);
 
   const visibleItems = useMemo(() => {
     const filtered = filter === 'active'
@@ -48,26 +59,19 @@ function TodoView() {
         ? items.filter((item) => item.done)
         : items;
     return [...filtered].sort((a, b) => {
+      if (a.done !== b.done) return Number(a.done) - Number(b.done);
       const priorityDiff = priorityRank[a.priority] - priorityRank[b.priority];
-      if (priorityDiff !== 0) return priorityDiff;
-      const aDue = a.due_date || '9999-12-31';
-      const bDue = b.due_date || '9999-12-31';
-      const dateDiff = aDue.localeCompare(bDue);
-      if (dateDiff !== 0) return dateDiff;
-      return a.title.localeCompare(b.title, 'zh-Hans-CN');
+      if (priorityDiff) return priorityDiff;
+      return (a.due_date || '9999-12-31').localeCompare(b.due_date || '9999-12-31') || a.title.localeCompare(b.title, 'zh-Hans-CN');
     });
   }, [filter, items]);
 
   const addTodo = async () => {
     const cleanTitle = title.trim();
-    if (!cleanTitle) return;
+    if (!cleanTitle || submitting) return;
+    setSubmitting(true);
     try {
-      const data = await createTodo({
-        title: cleanTitle,
-        priority,
-        due_date: dueDate || null,
-        notes: notes.trim(),
-      }) as { item: TodoItem };
+      const data = await createTodo({ title: cleanTitle, priority, due_date: dueDate || null, notes: notes.trim() }) as { item: TodoItem };
       setItems((current) => [...current, data.item]);
       setTitle('');
       setDueDate('');
@@ -75,6 +79,8 @@ function TodoView() {
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : '添加失败');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -99,85 +105,104 @@ function TodoView() {
   };
 
   return (
-    <div style={pageStyle}>
-      <div style={toolbarStyle}>
+    <main className="todo-page">
+      <header className="productivity-header">
         <div>
-          <h2 style={titleStyle}>TodoList</h2>
-          <p style={hintStyle}>把今天要推进的事收在这里，先清主线。</p>
+          <span className="productivity-eyebrow">FIREFLY FOCUS</span>
+          <h2>任务清单</h2>
+          <p>不用记住所有事，只决定现在要推进哪一件。</p>
         </div>
-        <div style={segmentStyle}>
-          {(['active', 'all', 'done'] as const).map((key) => (
-            <button key={key} onClick={() => setFilter(key)} style={filter === key ? activeSegStyle : segStyle}>
-              {key === 'active' ? '进行中' : key === 'done' ? '已完成' : '全部'}
-            </button>
-          ))}
+        <div className="todo-progress-orb" style={{ '--todo-progress': `${stats.progress * 3.6}deg` } as React.CSSProperties}>
+          <span><b>{stats.progress}%</b><small>总进度</small></span>
         </div>
-      </div>
+      </header>
 
-      <div style={gridStyle}>
-        <FrostedCard style={{ padding: 18 }}>
-          <div style={formStyle}>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="新增待办" style={inputStyle} />
-            <div style={rowStyle}>
-              <select value={priority} onChange={(e) => setPriority(e.target.value as TodoItem['priority'])} style={inputStyle}>
-                <option value="high">高优先级</option>
-                <option value="medium">中优先级</option>
-                <option value="low">低优先级</option>
-              </select>
-              <input value={dueDate} onChange={(e) => setDueDate(e.target.value)} type="date" style={inputStyle} />
-            </div>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="备注，可不填" style={textareaStyle} />
-            <button onClick={addTodo} style={primaryButtonStyle}>添加</button>
+      <section className="todo-overview" aria-label="任务概览">
+        <article><span>待推进</span><strong>{stats.active}</strong><small>保持一条清晰主线</small></article>
+        <article><span>今天到期</span><strong>{stats.today}</strong><small>先处理时间敏感项</small></article>
+        <article className={stats.urgent ? 'is-urgent' : ''}><span>需要留意</span><strong>{stats.urgent}</strong><small>{stats.urgent ? '重要或临期任务' : '目前节奏轻松'}</small></article>
+        <article><span>已经完成</span><strong>{stats.done}</strong><small>每一步都算数</small></article>
+      </section>
+
+      <section className="todo-capture-card">
+        <div className="todo-capture-main">
+          <span className="todo-capture-mark">＋</span>
+          <label>
+            <small>快速记下一件事</small>
+            <input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Enter') addTodo(); }}
+              placeholder="例如：完成首页交互稿"
+            />
+          </label>
+        </div>
+        <div className="todo-capture-options">
+          <div className="priority-picker" aria-label="优先级">
+            {(Object.keys(priorityMeta) as TodoItem['priority'][]).map((value) => (
+              <button key={value} className={priority === value ? `is-active is-${value}` : ''} onClick={() => setPriority(value)}>
+                <i>{priorityMeta[value].mark}</i>{priorityMeta[value].label}
+              </button>
+            ))}
           </div>
-        </FrostedCard>
-
-        <div style={listStyle}>
-          {loading && <FrostedCard style={{ padding: 18, color: 'var(--text-muted)' }}>加载中...</FrostedCard>}
-          {error && <FrostedCard style={{ padding: 18, color: '#b42318' }}>{error}</FrostedCard>}
-          {!loading && visibleItems.length === 0 && (
-            <FrostedCard style={{ padding: 18, color: 'var(--text-muted)' }}>这里暂时是空的。</FrostedCard>
-          )}
-          {visibleItems.map((item) => (
-            <FrostedCard key={item.id} style={{ padding: 16 }}>
-              <div style={itemTopStyle}>
-                <label style={checkLabelStyle}>
-                  <input type="checkbox" checked={item.done} onChange={() => toggleDone(item)} />
-                  <span style={{ ...itemTitleStyle, textDecoration: item.done ? 'line-through' : 'none' }}>{item.title}</span>
-                </label>
-                <button onClick={() => remove(item.id)} style={ghostButtonStyle}>删除</button>
-              </div>
-              <div style={metaStyle}>
-                <span>优先级：{priorityLabel[item.priority]}</span>
-                {item.due_date && <span>截止：{item.due_date}</span>}
-              </div>
-              {item.notes && <p style={notesStyle}>{item.notes}</p>}
-            </FrostedCard>
-          ))}
+          <label className="todo-date-field"><span>截止</span><input value={dueDate} onChange={(event) => setDueDate(event.target.value)} type="date" /></label>
+          <button className="todo-add-button" onClick={addTodo} disabled={!title.trim() || submitting}>{submitting ? '正在加入…' : '加入清单'}<b>→</b></button>
         </div>
-      </div>
-    </div>
+        <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="补充备注（可选）" />
+      </section>
+
+      <section className="todo-board">
+        <div className="todo-board-head">
+          <div><span>任务流</span><h3>{filter === 'active' ? '现在要做的事' : filter === 'done' ? '完成记录' : '全部任务'}</h3></div>
+          <nav className="todo-filters" aria-label="筛选任务">
+            {(['active', 'all', 'done'] as const).map((key) => (
+              <button key={key} className={filter === key ? 'is-active' : ''} onClick={() => setFilter(key)}>
+                {key === 'active' ? '进行中' : key === 'done' ? '已完成' : '全部'}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {error && <div className="productivity-error">{error}</div>}
+        {loading && <div className="productivity-empty">正在整理任务…</div>}
+        {!loading && visibleItems.length === 0 && (
+          <div className="productivity-empty"><span>✓</span><strong>{filter === 'active' ? '手上没有待办' : '这里还是空的'}</strong><p>给自己留一点空白，也是一种进度。</p></div>
+        )}
+        <div className="todo-list">
+          {visibleItems.map((item) => {
+            const due = getDueMeta(item.due_date, item.done);
+            return (
+              <article key={item.id} className={`todo-item todo-item--${item.priority}${item.done ? ' is-done' : ''}`}>
+                <button className="todo-check" onClick={() => toggleDone(item)} aria-label={item.done ? `恢复 ${item.title}` : `完成 ${item.title}`}><span>✓</span></button>
+                <div className="todo-item-copy">
+                  <div className="todo-item-title-row"><h4>{item.title}</h4><span className={`todo-priority todo-priority--${item.priority}`}>{priorityMeta[item.priority].label}</span></div>
+                  {item.notes && <p>{item.notes}</p>}
+                  <div className="todo-item-meta">
+                    {due && <span className={due.tone}>{due.label}</span>}
+                    {!item.due_date && <span>没有截止时间</span>}
+                    {item.done && <span className="is-complete">已完成</span>}
+                  </div>
+                </div>
+                <div className="todo-item-actions">
+                  {!item.done && <button className="todo-focus" onClick={() => onStartFocus?.(item.title)}>专注</button>}
+                  <button className="todo-delete" onClick={() => remove(item.id)} aria-label={`删除 ${item.title}`} title="删除">×</button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    </main>
   );
 }
 
-const pageStyle: React.CSSProperties = { padding: 24, height: '100%', overflow: 'auto' };
-const toolbarStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 18, alignItems: 'center' };
-const titleStyle: React.CSSProperties = { color: 'var(--text-main)', fontSize: 'var(--font-size-lg)', margin: 0 };
-const hintStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)', margin: '6px 0 0' };
-const gridStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(260px, 340px) minmax(0, 1fr)', gap: 16, alignItems: 'start' };
-const formStyle: React.CSSProperties = { display: 'grid', gap: 10 };
-const rowStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 };
-const listStyle: React.CSSProperties = { display: 'grid', gap: 10 };
-const segmentStyle: React.CSSProperties = { display: 'flex', padding: 3, border: '1px solid var(--glass-border)', borderRadius: 8, background: 'rgba(246,252,255,0.65)' };
-const segStyle: React.CSSProperties = { padding: '7px 12px', color: 'var(--text-muted)', background: 'transparent', borderRadius: 6, fontSize: 'var(--font-size-sm)' };
-const activeSegStyle: React.CSSProperties = { ...segStyle, background: 'var(--primary-cyan)', color: 'var(--deep-blue)', fontWeight: 700 };
-const inputStyle: React.CSSProperties = { padding: '9px 11px', border: '1px solid var(--glass-border)', borderRadius: 8, color: 'var(--text-main)', background: 'rgba(255,255,255,0.7)', outline: 'none' };
-const textareaStyle: React.CSSProperties = { ...inputStyle, minHeight: 88, resize: 'vertical' };
-const primaryButtonStyle: React.CSSProperties = { padding: '10px 14px', borderRadius: 8, background: 'var(--primary-blue)', color: 'white', fontWeight: 700 };
-const ghostButtonStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' };
-const itemTopStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' };
-const checkLabelStyle: React.CSSProperties = { display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 };
-const itemTitleStyle: React.CSSProperties = { color: 'var(--text-main)', fontWeight: 700, wordBreak: 'break-word' };
-const metaStyle: React.CSSProperties = { display: 'flex', gap: 12, flexWrap: 'wrap', color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)', marginTop: 8 };
-const notesStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)', margin: '8px 0 0', lineHeight: 1.5 };
+function getDueMeta(dueDate: string | null, done: boolean) {
+  if (!dueDate) return null;
+  const today = localToday();
+  if (done) return { label: `截止 ${dueDate}`, tone: '' };
+  if (dueDate < today) return { label: `已逾期 · ${dueDate}`, tone: 'is-overdue' };
+  if (dueDate === today) return { label: '今天到期', tone: 'is-today' };
+  return { label: `截止 ${dueDate}`, tone: '' };
+}
 
 export default TodoView;

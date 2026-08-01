@@ -11,10 +11,10 @@ def _get_client() -> OpenAI:
     return OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
 
 
-def ask_deepseek(messages, temperature: float = 0.7) -> str:
+def ask_deepseek(messages, temperature: float = 0.7, model: str | None = None) -> str:
     client = _get_client()
     response = client.chat.completions.create(
-        model=DEEPSEEK_MODEL,
+        model=model or DEEPSEEK_MODEL,
         messages=messages,
         temperature=temperature,
     )

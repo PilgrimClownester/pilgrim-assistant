@@ -2,29 +2,34 @@
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
   height: 100vh;
-  background: rgba(246, 252, 255, 0.82);
-  backdrop-filter: blur(14px);
+  position: relative;
+  z-index: 10;
+  background: linear-gradient(180deg, rgba(250, 254, 255, 0.94), rgba(241, 250, 253, 0.88));
+  backdrop-filter: blur(20px);
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border-soft);
+  box-shadow: 8px 0 30px rgba(36, 101, 128, 0.06);
   user-select: none;
 }
 
 .sidebar-brand {
-  padding: 24px 20px 20px;
+  width: 100%;
+  padding: 20px 16px 18px;
   border-bottom: 1px solid var(--border-soft);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 11px;
+  text-align: left;
 }
 
 .sidebar-brand-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
+  width: 44px;
+  height: 44px;
+  border-radius: 15px;
   overflow: hidden;
   border: 1px solid var(--border-soft);
-  box-shadow: 0 4px 12px rgba(80, 150, 180, 0.2);
+  box-shadow: 0 8px 20px rgba(52, 132, 162, 0.2);
   flex-shrink: 0;
 }
 
@@ -41,8 +46,8 @@
 }
 
 .sidebar-title {
-  font-size: 1.2rem;
-  font-weight: 700;
+  font-size: 1.16rem;
+  font-weight: 750;
   color: var(--deep-blue);
   letter-spacing: 0.02em;
 }
@@ -50,58 +55,81 @@
 .sidebar-subtitle {
   font-size: var(--font-size-xs);
   color: var(--text-muted);
-  margin-top: 1px;
+  margin-top: 2px;
+  white-space: nowrap;
 }
 
 .sidebar-nav {
   flex: 1;
-  padding: 12px 0;
+  padding: 10px 8px;
   overflow-y: auto;
 }
 
 .nav-section {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .nav-section-title {
   display: block;
-  padding: 10px 20px 4px;
+  padding: 7px 11px 4px;
   font-size: var(--font-size-xs);
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
+  letter-spacing: 0.08em;
+  font-weight: 700;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   width: 100%;
-  padding: 10px 20px;
+  min-height: 38px;
+  padding: 6px 10px;
   color: var(--text-muted);
   transition: all var(--transition-fast);
-  border-left: 3px solid transparent;
+  border: 1px solid transparent;
+  border-radius: 13px;
   text-align: left;
   font-weight: 500;
 }
 
 .nav-item:hover {
-  background: rgba(93, 185, 232, 0.1);
+  background: rgba(255, 255, 255, 0.66);
   color: var(--text-main);
+  border-color: rgba(63, 175, 217, 0.2);
+  transform: translateX(2px);
 }
 
 .nav-item--active {
-  background: rgba(93, 185, 232, 0.14);
-  color: var(--primary-blue);
-  border-left-color: var(--primary-blue);
-  font-weight: 600;
+  background: linear-gradient(115deg, rgba(63, 175, 217, 0.18), rgba(105, 216, 194, 0.16));
+  color: #15769d;
+  border-color: rgba(63, 175, 217, 0.28);
+  box-shadow: 0 7px 18px rgba(44, 134, 170, 0.1), inset 3px 0 0 var(--primary-blue);
+  font-weight: 700;
+}
+
+.nav-item:focus-visible {
+  outline-offset: -3px;
 }
 
 .nav-item-icon {
-  font-size: 1.1rem;
-  width: 24px;
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  font-size: 1rem;
   text-align: center;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.nav-item--inbox .nav-item-icon,
+.nav-item--projects .nav-item-icon,
+.nav-item--review .nav-item-icon {
+  color: #197c9d;
+  background: linear-gradient(135deg, rgba(95, 210, 223, .17), rgba(105, 216, 194, .14));
+  font-weight: 800;
 }
 
 .nav-item-label {
@@ -111,8 +139,10 @@
   text-overflow: ellipsis;
 }
 
+.nav-item-mobile-label { display: none; }
+
 .sidebar-footer {
-  padding: 16px 20px;
+  padding: 14px 18px;
   border-top: 1px solid var(--border-soft);
   display: flex;
   align-items: center;
@@ -127,8 +157,8 @@
 }
 
 .status-dot--online {
-  background: #5DB9E8;
-  box-shadow: 0 0 6px rgba(93, 185, 232, 0.5);
+  background: #39c9ad;
+  box-shadow: 0 0 0 4px rgba(57, 201, 173, 0.12), 0 0 9px rgba(57, 201, 173, 0.45);
 }
 
 .status-dot--offline {
@@ -139,4 +169,17 @@
 .status-text {
   font-size: var(--font-size-xs);
   color: var(--text-muted);
+}
+
+@media (max-width: 760px) {
+  .sidebar-brand { justify-content: center; padding-inline: 10px; }
+  .sidebar-brand-text,
+  .nav-section-title,
+  .nav-item-label,
+  .status-text { display: none; }
+  .sidebar-nav { padding-inline: 9px; }
+  .nav-section { margin-bottom: 3px; }
+  .nav-item { justify-content: center; padding-inline: 8px; }
+  .nav-item:hover { transform: translateY(-1px); }
+  .sidebar-footer { justify-content: center; padding-inline: 8px; }
 }

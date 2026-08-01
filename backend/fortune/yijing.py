@@ -100,6 +100,7 @@ def cast_yijing() -> dict[str, object]:
     return {
         "lines": lines,
         "moving_lines": moving_lines,
+        "changed_lines": changed_lines,
         "main_hexagram": _hexagram_for(lines),
         "changed_hexagram": _hexagram_for(changed_lines),
     }

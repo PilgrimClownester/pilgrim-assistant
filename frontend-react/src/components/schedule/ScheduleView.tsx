@@ -1,332 +1,265 @@
-import { useEffect, useMemo, useState } from 'react';
-import FrostedCard from '../shared/FrostedCard';
-import { createScheduleEvent, deleteScheduleEvent, getSchedule, getTodos } from '../../api/client';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createScheduleEvent, deleteScheduleEvent, getSchedule, getTodos, updateScheduleEvent } from '../../api/client';
 import type { ScheduleEvent, TodoItem } from '../../types';
+import './ScheduleView.css';
 
-const categoryLabel = {
-  study: '学习',
-  project: '项目',
-  life: '生活',
-  deadline: '截止',
-  other: '其他',
+const categoryMeta = {
+  study: { label: '学习', mark: '学' },
+  project: { label: '项目', mark: '项' },
+  life: { label: '生活', mark: '生' },
+  deadline: { label: '截止', mark: '限' },
+  other: { label: '其他', mark: '·' },
 };
 
-function today() {
-  return new Date().toISOString().slice(0, 10);
+function localToday() {
+  const now = new Date();
+  return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
 }
 
-function monthKey(value: string) {
-  return value.slice(0, 7);
-}
+function monthKey(value: string) { return value.slice(0, 7); }
 
-function ScheduleView() {
+function ScheduleView({ onStartFocus }: { onStartFocus?: (title: string) => void }) {
+  const initialDate = localToday();
   const [items, setItems] = useState<ScheduleEvent[]>([]);
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [title, setTitle] = useState('');
-  const [date, setDate] = useState(today());
-  const [selectedDate, setSelectedDate] = useState(today());
+  const [date, setDate] = useState(initialDate);
+  const [selectedDate, setSelectedDate] = useState(initialDate);
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [calendarMonth, setCalendarMonth] = useState(monthKey(today()));
+  const [calendarMonth, setCalendarMonth] = useState(monthKey(initialDate));
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [timeRange, setTimeRange] = useState('');
   const [category, setCategory] = useState<ScheduleEvent['category']>('study');
   const [notes, setNotes] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const dataVersion = useRef(0);
 
   useEffect(() => {
-    Promise.all([getSchedule(), getTodos()])
+    let mounted = true;
+    const load = (initial = false) => {
+      const requestedAtVersion = dataVersion.current;
+      return Promise.all([getSchedule(), getTodos()])
       .then(([scheduleData, todoData]) => {
-        setItems((scheduleData as { items: ScheduleEvent[] }).items);
+        if (!mounted || requestedAtVersion !== dataVersion.current) return;
+        setItems(normalizeSchedule((scheduleData as { items: ScheduleEvent[] }).items));
         setTodos((todoData as { items: TodoItem[] }).items);
+        if (initial) setError('');
       })
-      .catch((err) => setError(err instanceof Error ? err.message : '加载失败'))
-      .finally(() => setLoading(false));
+      .catch((err) => { if (mounted && initial) setError(err instanceof Error ? err.message : '加载失败'); })
+      .finally(() => { if (mounted && initial) setLoading(false); });
+    };
+    load(true);
+    const timer = window.setInterval(() => load(), 12_000);
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { mounted = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
   }, []);
 
-  const grouped = useMemo(() => {
-    const sorted = [...items].sort((a, b) => `${a.date}${a.start_time || '99:99'}${a.title}`.localeCompare(`${b.date}${b.start_time || '99:99'}${b.title}`));
-    return sorted.reduce<Record<string, ScheduleEvent[]>>((acc, item) => {
-      acc[item.date] = acc[item.date] || [];
-      acc[item.date].push(item);
-      return acc;
-    }, {});
-  }, [items]);
-
-  const availableDates = useMemo(() => {
-    const dates = new Set(items.map((item) => item.date));
-    dates.add(selectedDate);
-    return [...dates].sort();
-  }, [items, selectedDate]);
-
+  const grouped = useMemo(() => sortSchedule(items).reduce<Record<string, ScheduleEvent[]>>((acc, item) => {
+    (acc[item.date] ||= []).push(item);
+    return acc;
+  }, {}), [items]);
   const selectedEvents = grouped[selectedDate] || [];
+  const selectedTodos = useMemo(() => todos.filter((todo) => todo.due_date === selectedDate), [selectedDate, todos]);
   const calendarDays = useMemo(() => buildCalendarDays(calendarMonth), [calendarMonth]);
-  const todosByDate = useMemo(() => {
-    return todos.reduce<Record<string, TodoItem[]>>((acc, todo) => {
-      if (!todo.due_date) return acc;
-      acc[todo.due_date] = acc[todo.due_date] || [];
-      acc[todo.due_date].push(todo);
-      return acc;
-    }, {});
-  }, [todos]);
+  const todosByDate = useMemo(() => todos.reduce<Record<string, TodoItem[]>>((acc, todo) => {
+    if (todo.due_date) (acc[todo.due_date] ||= []).push(todo);
+    return acc;
+  }, {}), [todos]);
+  const dayStats = useMemo(() => getDayStats(selectedEvents), [selectedEvents]);
 
-  const addEvent = async () => {
+  const save = async () => {
     const cleanTitle = title.trim();
-    if (!cleanTitle) return;
+    if (submitting) return;
+    if (!cleanTitle) {
+      setError('请先填写日程标题。');
+      return;
+    }
+    if (!date) {
+      setError('请选择日程日期。');
+      return;
+    }
     const parsedRange = parseTimeRange(timeRange);
+    if (timeRange.trim() && !parsedRange) {
+      setError('时间段请填写成 18:00-20:00 这样的格式。');
+      return;
+    }
     const cleanStart = parsedRange?.start || startTime;
     const cleanEnd = parsedRange?.end || endTime;
+    dataVersion.current += 1;
+    setSubmitting(true);
+    setError('');
     try {
-      const data = await createScheduleEvent({
-        title: cleanTitle,
-        date,
-        start_time: cleanStart,
-        end_time: cleanEnd,
-        category,
-        notes: notes.trim(),
-      }) as { item: ScheduleEvent };
-      setItems((current) => [...current, data.item].sort((a, b) => `${a.date}${a.start_time}`.localeCompare(`${b.date}${b.start_time}`)));
+      const payload = { title: cleanTitle, date, start_time: cleanStart, end_time: cleanEnd, category, notes: notes.trim() };
+      const data = editingId
+        ? await updateScheduleEvent(editingId, payload) as { item: ScheduleEvent }
+        : await createScheduleEvent(payload) as { item: ScheduleEvent };
+      setItems((current) => sortSchedule(editingId
+        ? current.map((item) => item.id === editingId ? { ...data.item, done: Boolean(data.item.done) } : item)
+        : [...current, { ...data.item, done: Boolean(data.item.done) }]));
       setSelectedDate(data.item.date);
-      setTitle('');
-      setStartTime('');
-      setEndTime('');
-      setTimeRange('');
-      setNotes('');
+      resetForm();
       setError('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '添加失败');
+      setError(err instanceof Error ? err.message : editingId ? '保存失败' : '添加失败');
+    } finally {
+      setSubmitting(false);
     }
+  };
+
+  const startEdit = (event: ScheduleEvent) => {
+    setEditingId(event.id);
+    setTitle(event.title);
+    setDate(event.date);
+    setStartTime(event.start_time || '');
+    setEndTime(event.end_time || '');
+    setTimeRange(event.start_time && event.end_time ? `${event.start_time}-${event.end_time}` : '');
+    setCategory(event.category);
+    setNotes(event.notes || '');
+    setSelectedDate(event.date);
+    setError('');
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setTitle('');
+    setStartTime('');
+    setEndTime('');
+    setTimeRange('');
+    setNotes('');
+  };
+
+  const toggleDone = async (event: ScheduleEvent) => {
+    try {
+      const data = await updateScheduleEvent(event.id, { done: !event.done }) as { item: ScheduleEvent };
+      setItems((current) => sortSchedule(current.map((item) => item.id === event.id ? { ...data.item, done: Boolean(data.item.done) } : item)));
+      setError('');
+    } catch (err) { setError(err instanceof Error ? err.message : '更新失败'); }
   };
 
   const remove = async (id: string) => {
     try {
       await deleteScheduleEvent(id);
       setItems((current) => current.filter((item) => item.id !== id));
+      if (editingId === id) resetForm();
       setError('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '删除失败');
-    }
+    } catch (err) { setError(err instanceof Error ? err.message : '删除失败'); }
+  };
+
+  const moveDate = (offset: number) => {
+    const value = new Date(`${selectedDate}T12:00:00`);
+    value.setDate(value.getDate() + offset);
+    const next = [value.getFullYear(), String(value.getMonth() + 1).padStart(2, '0'), String(value.getDate()).padStart(2, '0')].join('-');
+    setSelectedDate(next);
+    setDate(next);
+    setCalendarMonth(monthKey(next));
   };
 
   return (
-    <div style={pageStyle}>
-      <div style={headerStyle}>
+    <main className="schedule-page">
+      <header className="schedule-header">
         <div>
-          <h2 style={titleStyle}>日程安排</h2>
-          <p style={hintStyle}>按时间段看一天的安排，先把空档和冲突露出来。</p>
+          <span className="productivity-eyebrow">FIREFLY RHYTHM</span>
+          <h2>日程节奏</h2>
+          <p>把时间变成看得见的段落，也给空白留出位置。</p>
         </div>
-        <div style={headerActionsStyle}>
-          <button onClick={() => setCalendarOpen(true)} style={secondaryButtonStyle}>打开日历</button>
-          <input value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} type="date" style={datePickerStyle} />
+        <div className="schedule-date-nav">
+          <button onClick={() => moveDate(-1)} aria-label="前一天">‹</button>
+          <label><small>正在查看</small><input value={selectedDate} onChange={(event) => { setSelectedDate(event.target.value); setDate(event.target.value); setCalendarMonth(monthKey(event.target.value)); }} type="date" /></label>
+          <button onClick={() => moveDate(1)} aria-label="后一天">›</button>
+          <button className="schedule-calendar-button" onClick={() => setCalendarOpen(true)}><span>▦</span> 月历</button>
         </div>
-      </div>
+      </header>
 
-      <div style={gridStyle}>
-        <FrostedCard style={{ padding: 18 }}>
-          <div style={formStyle}>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="日程标题" style={inputStyle} />
-            <div style={rowStyle}>
-              <input value={date} onChange={(e) => setDate(e.target.value)} type="date" style={inputStyle} />
-              <select value={category} onChange={(e) => setCategory(e.target.value as ScheduleEvent['category'])} style={inputStyle}>
-                <option value="study">学习</option>
-                <option value="project">项目</option>
-                <option value="life">生活</option>
-                <option value="deadline">截止</option>
-                <option value="other">其他</option>
-              </select>
-            </div>
-            <input
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              placeholder="时间段，例如 18:00-20:00"
-              style={inputStyle}
-            />
-            <div style={rowStyle}>
-              <input value={startTime} onChange={(e) => setStartTime(e.target.value)} type="time" style={inputStyle} title="开始时间" />
-              <input value={endTime} onChange={(e) => setEndTime(e.target.value)} type="time" style={inputStyle} title="结束时间" />
-            </div>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="备注，可不填" style={textareaStyle} />
-            <button onClick={addEvent} style={primaryButtonStyle}>添加日程</button>
-          </div>
-        </FrostedCard>
-
-        <div style={listStyle}>
-          {loading && <FrostedCard style={{ padding: 18, color: 'var(--text-muted)' }}>加载中...</FrostedCard>}
-          {error && <FrostedCard style={{ padding: 18, color: '#b42318' }}>{error}</FrostedCard>}
-          <FrostedCard style={{ padding: 16 }}>
-            <div style={scheduleHeadStyle}>
-              <h3 style={dayTitleStyle}>{selectedDate}</h3>
-              <div style={scheduleHeadActionsStyle}>
-                <button onClick={() => setCalendarOpen(true)} style={smallButtonStyle}>打开日历</button>
-                <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={smallSelectStyle}>
-                  {availableDates.map((day) => <option key={day} value={day}>{day}</option>)}
-                </select>
-              </div>
-            </div>
-            {!loading && selectedEvents.length === 0 && <div style={emptyStyle}>这一天还没排时间段。</div>}
-            {selectedEvents.length > 0 && (
-              <div style={tableStyle}>
-                <div style={tableHeaderStyle}>时间段</div>
-                <div style={tableHeaderStyle}>日程</div>
-                <div style={tableHeaderStyle}>分类</div>
-                <div style={tableHeaderStyle}>操作</div>
-                {selectedEvents.map((event) => (
-                  <div key={event.id} style={rowContentsStyle}>
-                    <div style={timeBlockStyle}>{formatTimeBlock(event)}</div>
-                    <div style={tableCellStyle}>
-                      <div style={eventTitleStyle}>{event.title}</div>
-                      {event.notes && <p style={notesStyle}>{event.notes}</p>}
-                    </div>
-                    <div style={{ ...tableCellStyle, ...tagStyle }}>{categoryLabel[event.category]}</div>
-                    <div style={tableCellStyle}>
-                      <button onClick={() => remove(event.id)} style={ghostButtonStyle}>删除</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </FrostedCard>
+      <section className="schedule-day-hero">
+        <div className="schedule-day-date"><span>{selectedDate.slice(5, 7)}月</span><strong>{selectedDate.slice(8, 10)}</strong><small>{friendlyDate(selectedDate)}</small></div>
+        <div className="schedule-day-copy"><span>{selectedDate === localToday() ? 'TODAY' : 'DAY PLAN'}</span><h3>{dayStats.count ? `这一天有 ${dayStats.count} 段安排` : '这一天还很自由'}</h3><p>{dayStats.conflicts ? `发现 ${dayStats.conflicts} 处时间重叠，建议稍微调整。` : dayStats.count ? '时间段之间没有明显冲突，可以从容推进。' : '可以先放进一件真正重要的事。'}</p></div>
+        <div className="schedule-day-metrics">
+          <article><strong>{dayStats.hours}</strong><span>小时已安排</span></article>
+          <article className={dayStats.conflicts ? 'is-warning' : ''}><strong>{dayStats.conflicts}</strong><span>处时间冲突</span></article>
+          <article><strong>{selectedTodos.length}</strong><span>项待办到期</span></article>
         </div>
-      </div>
+      </section>
+
+      <section className={`schedule-compose${editingId ? ' is-editing' : ''}`}>
+        <div className="schedule-compose-heading"><span>{editingId ? '✎' : '＋'}</span><div><small>{editingId ? '正在调整' : '添加一段时间'}</small><strong>{editingId ? '修改日程安排' : '今天想为哪件事留出位置？'}</strong></div></div>
+        <input className="schedule-title-input" value={title} onChange={(event) => setTitle(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); save(); } }} placeholder="日程标题" />
+        <div className="schedule-compose-fields">
+          <label><span>日期</span><input value={date} onChange={(event) => setDate(event.target.value)} type="date" /></label>
+          <label><span>时间段</span><input value={timeRange} onChange={(event) => setTimeRange(event.target.value)} placeholder="18:00-20:00" /></label>
+          <label><span>或分别选择</span><div><input value={startTime} onChange={(event) => setStartTime(event.target.value)} type="time" /><i>—</i><input value={endTime} onChange={(event) => setEndTime(event.target.value)} type="time" /></div></label>
+          <label><span>类型</span><select value={category} onChange={(event) => setCategory(event.target.value as ScheduleEvent['category'])}>{(Object.keys(categoryMeta) as ScheduleEvent['category'][]).map((key) => <option key={key} value={key}>{categoryMeta[key].label}</option>)}</select></label>
+        </div>
+        <div className="schedule-compose-bottom">
+          <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="补充地点、准备事项或备注（可选）" />
+          {editingId && <button className="schedule-cancel-button" onClick={resetForm}>取消</button>}
+          <button type="button" className="schedule-save-button" onClick={save} disabled={submitting}>{submitting ? '保存中…' : editingId ? '保存修改' : '加入日程'}<b>→</b></button>
+        </div>
+        {error && <div className="schedule-compose-error" role="alert">{error}</div>}
+      </section>
+
+      <section className="schedule-timeline-card">
+        <div className="schedule-timeline-head"><div><span>DAY FLOW</span><h3>{friendlyDate(selectedDate)}的时间线</h3></div><small>{dayStats.done} / {dayStats.count} 已完成</small></div>
+        {error && <div className="productivity-error">{error}</div>}
+        {loading && <div className="productivity-empty">正在整理日程…</div>}
+        {!loading && selectedEvents.length === 0 && <div className="productivity-empty"><span>☀</span><strong>时间线还是空的</strong><p>未安排的时间，也可以用来休息和偶遇灵感。</p></div>}
+        <div className="schedule-timeline">
+          {selectedEvents.map((event, index) => (
+            <article key={event.id} className={`schedule-event schedule-event--${event.category}${event.done ? ' is-done' : ''}`}>
+              <div className="schedule-event-time"><strong>{event.start_time || '未定'}</strong><span>{event.end_time ? `至 ${event.end_time}` : '灵活安排'}</span></div>
+              <div className="schedule-rail"><i /><span>{index < selectedEvents.length - 1 ? '' : 'end'}</span></div>
+              <div className="schedule-event-card">
+                <div className="schedule-event-main"><span className="schedule-category-mark">{categoryMeta[event.category].mark}</span><div><small>{categoryMeta[event.category].label}{event.done ? ' · 已完成' : ''}</small><h4>{event.title}</h4>{event.notes && <p>{event.notes}</p>}</div></div>
+                <div className="schedule-event-actions">{!event.done && <button className="is-focus" onClick={() => onStartFocus?.(event.title)}>专注</button>}<button className="is-complete" onClick={() => toggleDone(event)}>{event.done ? '恢复' : '完成'}</button><button onClick={() => startEdit(event)}>编辑</button><button className="is-delete" onClick={() => remove(event.id)} aria-label={`删除 ${event.title}`}>×</button></div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       {calendarOpen && (
-        <div style={drawerBackdropStyle} onMouseDown={() => setCalendarOpen(false)}>
-          <aside style={drawerStyle} onMouseDown={(event) => event.stopPropagation()}>
-            <div style={drawerHeaderStyle}>
-              <div>
-                <h3 style={drawerTitleStyle}>日历视图</h3>
-                <p style={hintStyle}>按月查看日程和待办截止日期。</p>
-              </div>
-              <button onClick={() => setCalendarOpen(false)} style={ghostButtonStyle}>关闭</button>
-            </div>
-            <div style={monthToolbarStyle}>
-              <button onClick={() => setCalendarMonth(shiftMonth(calendarMonth, -1))} style={ghostButtonStyle}>上月</button>
-              <input value={calendarMonth} onChange={(e) => setCalendarMonth(e.target.value)} type="month" style={monthInputStyle} />
-              <button onClick={() => setCalendarMonth(shiftMonth(calendarMonth, 1))} style={ghostButtonStyle}>下月</button>
-            </div>
-            <div style={weekdayGridStyle}>
-              {['一', '二', '三', '四', '五', '六', '日'].map((day) => <div key={day} style={weekdayStyle}>{day}</div>)}
-            </div>
-            <div style={calendarGridStyle}>
+        <div className="calendar-backdrop" onMouseDown={() => setCalendarOpen(false)}>
+          <aside className="calendar-drawer" onMouseDown={(event) => event.stopPropagation()}>
+            <header><div><span className="productivity-eyebrow">MONTH VIEW</span><h3>月历</h3><p>日程与待办截止日期放在一起看。</p></div><button onClick={() => setCalendarOpen(false)}>×</button></header>
+            <div className="calendar-toolbar"><button onClick={() => setCalendarMonth(shiftMonth(calendarMonth, -1))}>‹ 上月</button><input value={calendarMonth} onChange={(event) => setCalendarMonth(event.target.value)} type="month" /><button onClick={() => setCalendarMonth(shiftMonth(calendarMonth, 1))}>下月 ›</button></div>
+            <div className="calendar-weekdays">{['一','二','三','四','五','六','日'].map((day) => <span key={day}>{day}</span>)}</div>
+            <div className="calendar-grid">
               {calendarDays.map((day) => {
                 const dayEvents = grouped[day.iso] || [];
                 const dayTodos = todosByDate[day.iso] || [];
-                return (
-                  <button
-                    key={day.iso}
-                    onClick={() => {
-                      setSelectedDate(day.iso);
-                      setCalendarMonth(monthKey(day.iso));
-                      setCalendarOpen(false);
-                    }}
-                    style={{
-                      ...calendarCellStyle,
-                      opacity: day.inMonth ? 1 : 0.45,
-                      borderColor: day.iso === selectedDate ? 'var(--primary-blue)' : 'rgba(117, 220, 232, 0.35)',
-                    }}
-                  >
-                    <div style={calendarDayNumberStyle}>{Number(day.iso.slice(8, 10))}</div>
-                    <div style={calendarItemsStyle}>
-                      {dayEvents.slice(0, 2).map((event) => <span key={event.id} style={eventPillStyle}>{event.start_time || '日程'} {event.title}</span>)}
-                      {dayTodos.slice(0, 2).map((todo) => <span key={todo.id} style={todoPillStyle}>{todo.done ? '已完成' : '待办'} {todo.title}</span>)}
-                      {dayEvents.length + dayTodos.length > 4 && <span style={moreStyle}>+{dayEvents.length + dayTodos.length - 4}</span>}
-                    </div>
-                  </button>
-                );
+                return <button key={day.iso} className={`${day.inMonth ? '' : 'is-outside'}${day.iso === selectedDate ? ' is-selected' : ''}${day.iso === localToday() ? ' is-today' : ''}`} onClick={() => { setSelectedDate(day.iso); setDate(day.iso); setCalendarMonth(monthKey(day.iso)); setCalendarOpen(false); }}>
+                  <strong>{Number(day.iso.slice(8,10))}</strong>
+                  <div>{dayEvents.slice(0,2).map((event) => <span key={event.id} className={event.done ? 'is-done' : ''}>{event.start_time || '日程'} {event.title}</span>)}{dayTodos.slice(0,1).map((todo) => <span key={todo.id} className="is-todo">待办 {todo.title}</span>)}{dayEvents.length + dayTodos.length > 3 && <small>+{dayEvents.length + dayTodos.length - 3}</small>}</div>
+                </button>;
               })}
             </div>
           </aside>
         </div>
       )}
-    </div>
+    </main>
   );
 }
 
-function formatTimeBlock(event: ScheduleEvent) {
-  if (!event.start_time && !event.end_time) return '未定';
-  if (event.start_time && event.end_time) return `${event.start_time}-${event.end_time}`;
-  return event.start_time || `至 ${event.end_time}`;
-}
-
 function parseTimeRange(value: string) {
-  const normalized = value.trim().replace(/[：]/g, ':');
-  const match = normalized.match(/^(\d{1,2}:\d{2})\s*(?:-|—|–|~|～|到|至)\s*(\d{1,2}:\d{2})$/);
-  if (!match) return null;
-  return { start: normalizeTime(match[1]), end: normalizeTime(match[2]) };
+  const match = value.trim().replace(/[：]/g, ':').match(/^(\d{1,2}:\d{2})\s*(?:-|—|–|~|～|到|至)\s*(\d{1,2}:\d{2})$/);
+  return match ? { start: normalizeTime(match[1]), end: normalizeTime(match[2]) } : null;
 }
-
-function normalizeTime(value: string) {
-  const [hour, minute] = value.split(':');
-  return `${hour.padStart(2, '0')}:${minute}`;
+function normalizeTime(value: string) { const [hour, minute] = value.split(':'); return `${hour.padStart(2, '0')}:${minute}`; }
+function toMinutes(value: string) { if (!value) return null; const [hour, minute] = value.split(':').map(Number); return Number.isFinite(hour + minute) ? hour * 60 + minute : null; }
+function getDayStats(events: ScheduleEvent[]) {
+  const timed = events.map((event) => ({ start: toMinutes(event.start_time), end: toMinutes(event.end_time) })).filter((item): item is { start: number; end: number } => item.start !== null && item.end !== null).sort((a,b) => a.start - b.start);
+  const minutes = timed.reduce((total, item) => total + Math.max(0, item.end - item.start), 0);
+  const conflicts = timed.reduce((total, item, index) => index && item.start < timed[index - 1].end ? total + 1 : total, 0);
+  return { count: events.length, done: events.filter((event) => event.done).length, hours: Math.round(minutes / 6) / 10, conflicts };
 }
-
-function buildCalendarDays(month: string) {
-  const [year, monthNumber] = month.split('-').map(Number);
-  const first = new Date(year, monthNumber - 1, 1);
-  const offset = (first.getDay() + 6) % 7;
-  const start = new Date(year, monthNumber - 1, 1 - offset);
-  return Array.from({ length: 42 }, (_, index) => {
-    const dateValue = new Date(start);
-    dateValue.setDate(start.getDate() + index);
-    const iso = [
-      dateValue.getFullYear(),
-      String(dateValue.getMonth() + 1).padStart(2, '0'),
-      String(dateValue.getDate()).padStart(2, '0'),
-    ].join('-');
-    return { iso, inMonth: dateValue.getMonth() === monthNumber - 1 };
-  });
-}
-
-function shiftMonth(month: string, delta: number) {
-  const [year, monthNumber] = month.split('-').map(Number);
-  const dateValue = new Date(year, monthNumber - 1 + delta, 1);
-  return `${dateValue.getFullYear()}-${String(dateValue.getMonth() + 1).padStart(2, '0')}`;
-}
-
-const pageStyle: React.CSSProperties = { padding: 24, height: '100%', overflow: 'auto' };
-const headerStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center', marginBottom: 18 };
-const headerActionsStyle: React.CSSProperties = { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' };
-const titleStyle: React.CSSProperties = { color: 'var(--text-main)', fontSize: 'var(--font-size-lg)', margin: 0 };
-const hintStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)', margin: '6px 0 0' };
-const gridStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(260px, 340px) minmax(0, 1fr)', gap: 16, alignItems: 'start' };
-const formStyle: React.CSSProperties = { display: 'grid', gap: 10 };
-const rowStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 };
-const listStyle: React.CSSProperties = { display: 'grid', gap: 12 };
-const inputStyle: React.CSSProperties = { padding: '9px 11px', border: '1px solid var(--glass-border)', borderRadius: 8, color: 'var(--text-main)', background: 'rgba(255,255,255,0.7)', outline: 'none' };
-const textareaStyle: React.CSSProperties = { ...inputStyle, minHeight: 88, resize: 'vertical' };
-const primaryButtonStyle: React.CSSProperties = { padding: '10px 14px', borderRadius: 8, background: 'var(--primary-blue)', color: 'white', fontWeight: 700 };
-const secondaryButtonStyle: React.CSSProperties = { ...primaryButtonStyle, background: 'var(--mint)', color: 'var(--deep-blue)' };
-const dayTitleStyle: React.CSSProperties = { color: 'var(--text-main)', fontSize: 'var(--font-size-base)', margin: '0 0 12px' };
-const tagStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)' };
-const eventTitleStyle: React.CSSProperties = { color: 'var(--text-main)', fontWeight: 700, marginTop: 4, wordBreak: 'break-word' };
-const notesStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)', margin: '6px 0 0', lineHeight: 1.5 };
-const ghostButtonStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' };
-const datePickerStyle: React.CSSProperties = { ...inputStyle, width: 160 };
-const scheduleHeadStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' };
-const scheduleHeadActionsStyle: React.CSSProperties = { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' };
-const smallSelectStyle: React.CSSProperties = { ...inputStyle, width: 150, padding: '7px 9px', fontSize: 'var(--font-size-xs)' };
-const smallButtonStyle: React.CSSProperties = { padding: '7px 10px', borderRadius: 8, background: 'var(--mint)', color: 'var(--deep-blue)', fontWeight: 700, fontSize: 'var(--font-size-xs)' };
-const emptyStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)', padding: '12px 0' };
-const tableStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: '120px minmax(0, 1fr) 72px 52px', columnGap: 12, rowGap: 0, alignItems: 'start' };
-const tableHeaderStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)', fontWeight: 700, padding: '8px 0', borderBottom: '1px solid rgba(117, 220, 232, 0.45)' };
-const rowContentsStyle: React.CSSProperties = { display: 'contents' };
-const timeBlockStyle: React.CSSProperties = { color: 'var(--deep-blue)', fontSize: 'var(--font-size-sm)', fontWeight: 700, padding: '12px 0', borderBottom: '1px solid rgba(117, 220, 232, 0.22)' };
-const tableCellStyle: React.CSSProperties = { minWidth: 0, padding: '12px 0', borderBottom: '1px solid rgba(117, 220, 232, 0.22)' };
-const drawerBackdropStyle: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 30, background: 'rgba(16, 35, 31, 0.18)', display: 'flex', justifyContent: 'flex-end' };
-const drawerStyle: React.CSSProperties = { width: 'min(640px, 100vw)', height: '100%', background: 'rgba(246, 252, 255, 0.96)', borderLeft: '1px solid var(--glass-border)', boxShadow: '-18px 0 40px rgba(80, 150, 180, 0.24)', padding: 22, overflow: 'auto' };
-const drawerHeaderStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'start', marginBottom: 16 };
-const drawerTitleStyle: React.CSSProperties = { color: 'var(--text-main)', fontSize: 'var(--font-size-lg)', margin: 0 };
-const monthToolbarStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14 };
-const monthInputStyle: React.CSSProperties = { ...inputStyle, width: 150 };
-const weekdayGridStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, marginBottom: 6 };
-const weekdayStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)', fontWeight: 700, textAlign: 'center' };
-const calendarGridStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6 };
-const calendarCellStyle: React.CSSProperties = { minHeight: 92, padding: 8, border: '1px solid rgba(117, 220, 232, 0.35)', borderRadius: 8, background: 'rgba(255,255,255,0.62)', textAlign: 'left', overflow: 'hidden' };
-const calendarDayNumberStyle: React.CSSProperties = { color: 'var(--deep-blue)', fontWeight: 800, fontSize: 'var(--font-size-sm)', marginBottom: 6 };
-const calendarItemsStyle: React.CSSProperties = { display: 'grid', gap: 4 };
-const eventPillStyle: React.CSSProperties = { color: 'var(--deep-blue)', background: 'rgba(93, 185, 232, 0.18)', borderRadius: 5, padding: '3px 5px', fontSize: '0.68rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
-const todoPillStyle: React.CSSProperties = { ...eventPillStyle, background: 'rgba(139, 230, 212, 0.22)' };
-const moreStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: '0.68rem' };
+function friendlyDate(value: string) { const date = new Date(`${value}T12:00:00`); return `${['周日','周一','周二','周三','周四','周五','周六'][date.getDay()]}`; }
+function buildCalendarDays(month: string) { const [year, monthNumber] = month.split('-').map(Number); const first = new Date(year, monthNumber - 1, 1); const offset = (first.getDay() + 6) % 7; const start = new Date(year, monthNumber - 1, 1 - offset); return Array.from({ length: 42 }, (_, index) => { const value = new Date(start); value.setDate(start.getDate() + index); const iso = [value.getFullYear(),String(value.getMonth()+1).padStart(2,'0'),String(value.getDate()).padStart(2,'0')].join('-'); return { iso, inMonth: value.getMonth() === monthNumber - 1 }; }); }
+function shiftMonth(month: string, delta: number) { const [year, number] = month.split('-').map(Number); const value = new Date(year, number - 1 + delta, 1); return `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,'0')}`; }
+function normalizeSchedule(events: ScheduleEvent[]) { return events.map((event) => ({ ...event, done: Boolean(event.done) })); }
+function sortSchedule(events: ScheduleEvent[]) { return [...events].sort((a,b) => `${a.date}${a.start_time || '99:99'}${a.title}`.localeCompare(`${b.date}${b.start_time || '99:99'}${b.title}`)); }
 
 export default ScheduleView;

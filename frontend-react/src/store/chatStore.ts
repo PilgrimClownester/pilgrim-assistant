@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Message } from '../types';
+import type { ChatHistoryItem, Message } from '../types';
 import { postChat } from '../api/client';
 
 interface ChatStore {
@@ -15,12 +15,22 @@ function genId(): string {
   return `msg-${Date.now()}-${nextId++}`;
 }
 
+function buildChatHistory(messages: Message[]): ChatHistoryItem[] {
+  return messages
+    .filter((message) => message.id !== 'greeting' && (message.role === 'user' || message.role === 'assistant'))
+    .slice(-16)
+    .map((message) => ({
+      role: message.role as ChatHistoryItem['role'],
+      content: message.content,
+    }));
+}
+
 export const useChatStore = create<ChatStore>((set, get) => ({
   messages: [
     {
       id: 'greeting',
       role: 'assistant',
-      content: '我在，Pilgrim。\n\n今天想先处理什么？学习、项目、日程，还是只是想随便说几句，我都可以陪你。',
+      content: '我在，Pilgrim。\n\n你慢慢说，我听着。',
       timestamp: Date.now(),
     },
   ],
@@ -42,7 +52,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }));
 
     try {
-      const data = await postChat(text);
+      const data = await postChat(text, buildChatHistory(get().messages));
       const assistantMsg: Message = {
         id: genId(),
         role: 'assistant',
@@ -74,7 +84,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         {
           id: 'greeting',
           role: 'assistant',
-          content: '我在，Pilgrim。\n\n今天想先处理什么？学习、项目、日程，还是只是想随便说几句，我都可以陪你。',
+          content: '我在，Pilgrim。\n\n你慢慢说，我听着。',
           timestamp: Date.now(),
         },
       ],

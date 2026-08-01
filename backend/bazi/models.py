@@ -19,6 +19,7 @@ class BirthInfo(BaseModel):
 
 class BaziAnalyzeRequest(BirthInfo):
     focus: str = Field(default="综合")
+    period: str = Field(default="近7天")
 
 
 class BaziQuestion(BaseModel):

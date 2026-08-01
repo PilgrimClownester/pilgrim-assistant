@@ -1,22 +1,65 @@
 import { useEffect, useState } from 'react';
 import FrostedCard from '../shared/FrostedCard';
-import { getProfile, saveProfile } from '../../api/client';
-import type { UserProfile } from '../../types';
+import { createMemory, deleteMemory, exportChatArchive, getMemories, getNapcatStatus, getProfile, postBaziChart, saveProfile, startNapcat, stopNapcat } from '../../api/client';
+import type { BirthInfo, CompanionMemory, UserProfile } from '../../types';
+import BaziChartView from './BaziChartView';
+import './SettingsView.css';
 
 function toNumberOrNull(value: string) {
   return value === '' ? null : Number(value);
+}
+
+function buildBirthInfo(profile: UserProfile): BirthInfo | null {
+  if (!profile.birth_year || !profile.birth_month || !profile.birth_day || profile.birth_hour === null || profile.birth_hour === undefined) return null;
+  return {
+    name: profile.nickname || 'Firefly 用户',
+    gender: profile.gender || 'unknown',
+    calendar_type: profile.calendar_type || 'solar',
+    birth_year: profile.birth_year,
+    birth_month: profile.birth_month,
+    birth_day: profile.birth_day,
+    birth_hour: profile.birth_hour,
+    birth_minute: profile.birth_minute || 0,
+    birth_place: profile.birth_place || undefined,
+    use_true_solar_time: profile.use_true_solar_time || false,
+    note: profile.bazi_note || undefined,
+  };
 }
 
 function SettingsView() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [napcatEnabled, setNapcatEnabled] = useState(false);
+  const [napcatLoading, setNapcatLoading] = useState(true);
+  const [napcatError, setNapcatError] = useState('');
+  const [baziChart, setBaziChart] = useState<unknown>(null);
+  const [baziLoading, setBaziLoading] = useState(false);
+  const [baziError, setBaziError] = useState('');
+  const [memories, setMemories] = useState<CompanionMemory[]>([]);
+  const [memoryText, setMemoryText] = useState('');
+  const [memoryCategory, setMemoryCategory] = useState<CompanionMemory['category']>('context');
+  const [memoryError, setMemoryError] = useState('');
+  const [archiveStatus, setArchiveStatus] = useState('');
 
   useEffect(() => {
     getProfile()
       .then((data) => setProfile(data as UserProfile))
       .catch(() => {})
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    getMemories()
+      .then((data) => setMemories((data as { items: CompanionMemory[] }).items))
+      .catch(() => setMemoryError('长期记忆暂时无法读取'));
+  }, []);
+
+  useEffect(() => {
+    getNapcatStatus()
+      .then((status) => setNapcatEnabled(status.enabled))
+      .catch(() => setNapcatError('无法读取 QQ 对话状态'))
+      .finally(() => setNapcatLoading(false));
   }, []);
 
   const handleSave = async () => {
@@ -30,11 +73,82 @@ function SettingsView() {
     setProfile((current) => current ? { ...current, [key]: value } : current);
   };
 
+  const toggleNapcat = async () => {
+    setNapcatLoading(true);
+    setNapcatError('');
+    try {
+      const status = napcatEnabled ? await stopNapcat() : await startNapcat();
+      setNapcatEnabled(status.enabled);
+    } catch {
+      setNapcatError('切换失败。请确认 NapCat 已启动、已登录，且 .env 中的 NAPCAT_TOKEN 正确。');
+    } finally {
+      setNapcatLoading(false);
+    }
+  };
+
+  const toggleBaziChart = async () => {
+    if (!profile) return;
+    if (baziChart !== null) {
+      setBaziChart(null);
+      return;
+    }
+    const birthInfo = buildBirthInfo(profile);
+    if (!birthInfo) {
+      setBaziError('请先补全出生年月日时。');
+      return;
+    }
+    setBaziLoading(true);
+    setBaziError('');
+    try {
+      const response = await postBaziChart(birthInfo) as { chart?: unknown };
+      setBaziChart(response.chart ?? null);
+    } catch (error) {
+      setBaziError(error instanceof Error ? error.message : '命盘读取失败');
+    } finally {
+      setBaziLoading(false);
+    }
+  };
+
+  const addMemory = async () => {
+    const content = memoryText.trim();
+    if (!content) return;
+    try {
+      const data = await createMemory({ content, category: memoryCategory }) as { item: CompanionMemory };
+      setMemories((current) => [data.item, ...current]);
+      setMemoryText('');
+      setMemoryError('');
+    } catch (error) { setMemoryError(error instanceof Error ? error.message : '添加失败'); }
+  };
+
+  const removeMemory = async (id: string) => {
+    try {
+      await deleteMemory(id);
+      setMemories((current) => current.filter((item) => item.id !== id));
+      setMemoryError('');
+    } catch (error) { setMemoryError(error instanceof Error ? error.message : '删除失败'); }
+  };
+
+  const downloadChatArchive = async () => {
+    setArchiveStatus('正在整理…');
+    try {
+      const blob = await exportChatArchive();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `firefly-chat-${new Date().toISOString().slice(0, 10)}.jsonl`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setArchiveStatus('已导出');
+    } catch (error) {
+      setArchiveStatus(error instanceof Error ? error.message : '导出失败');
+    }
+  };
+
   if (loading) return <div style={{ padding: 24, color: 'var(--color-text-muted)' }}>加载中...</div>;
   if (!profile) return <div style={{ padding: 24, color: 'var(--color-text-muted)' }}>无法加载档案</div>;
 
   return (
-    <div style={pageStyle}>
+    <div className="settings-page" style={pageStyle}>
       <div style={headerStyle}>
         <h2 style={titleStyle}>设置</h2>
         <button onClick={handleSave} style={primaryButtonStyle}>{saved ? '已保存' : '保存档案'}</button>
@@ -111,6 +225,64 @@ function SettingsView() {
             </Field>
           </div>
         </FrostedCard>
+
+        <FrostedCard className="settings-bazi-archive" style={{ padding: 22 }}>
+          <div className="settings-archive-heading">
+            <div>
+              <span>LONG-TERM ARCHIVE</span>
+              <h3>八字档案</h3>
+              <p>命盘属于长期资料，仅在你主动查看时显示；运势页只读取它作为推测依据。</p>
+            </div>
+            <button type="button" onClick={toggleBaziChart} disabled={baziLoading} className="settings-archive-button">
+              {baziLoading ? '正在排盘…' : baziChart !== null ? '收起命盘' : '查看我的命盘'}
+            </button>
+          </div>
+          {baziError && <p className="settings-archive-error">{baziError}</p>}
+          {baziChart !== null && <div className="settings-chart-wrap"><BaziChartView chart={baziChart} /></div>}
+        </FrostedCard>
+
+        <FrostedCard className="settings-memory" style={{ padding: 22 }}>
+          <div className="settings-memory-heading">
+            <div><span>VISIBLE MEMORY</span><h3>流萤记住的事</h3><p>只有这里的内容会作为长期记忆进入对话，你可以随时逐条删除。</p></div>
+            <em>{memories.length} 条</em>
+          </div>
+          <div className="settings-memory-compose">
+            <select value={memoryCategory} onChange={(event) => setMemoryCategory(event.target.value as CompanionMemory['category'])}>
+              <option value="preference">偏好</option><option value="goal">长期目标</option><option value="context">背景</option><option value="boundary">边界</option>
+            </select>
+            <input value={memoryText} onChange={(event) => setMemoryText(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') addMemory(); }} placeholder="例如：我不喜欢太正式的回复" maxLength={240} />
+            <button onClick={addMemory} disabled={!memoryText.trim()}>记住</button>
+          </div>
+          {memoryError && <p className="settings-memory-error">{memoryError}</p>}
+          <div className="settings-memory-list">
+            {memories.map((item) => <article key={item.id}><span>{memoryLabel(item.category)}</span><p>{item.content}</p><button onClick={() => removeMemory(item.id)} aria-label={`删除记忆 ${item.content}`}>×</button></article>)}
+            {!memories.length && <div className="settings-memory-empty">还没有长期记忆。只有你主动添加的内容才会出现在这里。</div>}
+          </div>
+        </FrostedCard>
+
+        <FrostedCard className="settings-data-archive" style={{ padding: 22 }}>
+          <div className="settings-archive-heading">
+            <div>
+              <span>LOCAL DATA</span>
+              <h3>数据与聊天归档</h3>
+              <p>聊天会自动缓存在这台电脑；归档记录不会自动进入对话上下文。Todo、日程和占卜结果由电脑在两端共享。</p>
+            </div>
+            <button type="button" onClick={downloadChatArchive} className="settings-archive-button">导出聊天记录</button>
+          </div>
+          {archiveStatus && <p className="settings-archive-status">{archiveStatus}</p>}
+        </FrostedCard>
+
+        <FrostedCard style={{ padding: 22 }}>
+          <h3 style={sectionTitleStyle}>QQ 对话</h3>
+          <p style={hintStyle}>开启后 Firefly 会自动连接 NapCat；仅允许 QQ 449140441 与机器人私聊。</p>
+          <label style={toggleRowStyle}>
+            <span>{napcatEnabled ? 'QQ 对话已开启' : 'QQ 对话已关闭'}</span>
+            <button type="button" onClick={toggleNapcat} disabled={napcatLoading} style={napcatEnabled ? stopButtonStyle : primaryButtonStyle}>
+              {napcatLoading ? '处理中…' : napcatEnabled ? '关闭 QQ 对话' : '开启 QQ 对话'}
+            </button>
+          </label>
+          {napcatError && <p style={errorStyle}>{napcatError}</p>}
+        </FrostedCard>
       </div>
     </div>
   );
@@ -123,6 +295,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </label>
   );
+}
+
+function memoryLabel(category: CompanionMemory['category']) {
+  return { preference: '偏好', goal: '目标', context: '背景', boundary: '边界' }[category];
 }
 
 const pageStyle: React.CSSProperties = { padding: 24, height: '100%', overflow: 'auto' };
@@ -138,5 +314,9 @@ const inputStyle: React.CSSProperties = { padding: '9px 11px', background: 'rgba
 const textareaStyle: React.CSSProperties = { ...inputStyle, minHeight: 86, resize: 'vertical' };
 const checkboxStyle: React.CSSProperties = { display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-main)', fontSize: 'var(--font-size-sm)' };
 const primaryButtonStyle: React.CSSProperties = { padding: '10px 16px', borderRadius: 8, background: 'var(--primary-blue)', color: 'white', fontWeight: 700 };
+const stopButtonStyle: React.CSSProperties = { ...primaryButtonStyle, background: 'rgba(205, 82, 104, 0.9)' };
+const toggleRowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', color: 'var(--text-main)', fontSize: 'var(--font-size-sm)' };
+const hintStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)', lineHeight: 1.6, margin: '0 0 14px' };
+const errorStyle: React.CSSProperties = { color: '#c94f68', fontSize: 'var(--font-size-sm)', lineHeight: 1.5, margin: '12px 0 0' };
 
 export default SettingsView;

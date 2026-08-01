@@ -1,12 +1,15 @@
 import json
+import os
 import re
 from pathlib import Path
+from threading import RLock
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
 
 PROFILE_PATH = Path(__file__).resolve().parents[1] / "data" / "profile.json"
+_PROFILE_LOCK = RLock()
 
 
 class UserProfile(BaseModel):
@@ -32,16 +35,16 @@ class UserProfile(BaseModel):
 
 
 def get_profile() -> UserProfile:
-    if not PROFILE_PATH.exists():
-        return UserProfile()
-
-    try:
-        data: dict[str, Any] = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
-        _repair_mojibake_defaults(data)
-        _migrate_legacy_birth_info(data)
-        return UserProfile(**data)
-    except (json.JSONDecodeError, OSError, TypeError, ValueError):
-        return UserProfile()
+    with _PROFILE_LOCK:
+        if not PROFILE_PATH.exists():
+            return UserProfile()
+        try:
+            data: dict[str, Any] = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
+            _repair_mojibake_defaults(data)
+            _migrate_legacy_birth_info(data)
+            return UserProfile(**data)
+        except (json.JSONDecodeError, OSError, TypeError, ValueError):
+            return UserProfile()
 
 
 def _repair_mojibake_defaults(data: dict[str, Any]) -> None:
@@ -71,11 +74,11 @@ def _migrate_legacy_birth_info(data: dict[str, Any]) -> None:
 
 
 def save_profile(profile: UserProfile) -> UserProfile:
-    PROFILE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    PROFILE_PATH.write_text(
-        json.dumps(profile.model_dump(), ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    with _PROFILE_LOCK:
+        PROFILE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        temporary = PROFILE_PATH.with_suffix(".tmp")
+        temporary.write_text(json.dumps(profile.model_dump(), ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(temporary, PROFILE_PATH)
     return profile
 
 

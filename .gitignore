@@ -9,17 +9,34 @@ data/vector_db/*
 !data/vector_db/.gitkeep
 data/profile.json
 data/productivity.json
+data/daily_fortune.json
+data/daily_fortune.tmp
+data/chat_archive.jsonl
+data/fortune_results.json
+data/fortune_results.tmp
+data/qq_bot_sessions.json
+data/growth.json
+data/growth.db
+data/growth.db-shm
+data/growth.db-wal
+data/workspace.db
+data/workspace.db-shm
+data/workspace.db-wal
+data/backups/
+data/treehole/
 backend/db/*.db
 .DS_Store
 
 # dependencies
 node_modules/
 frontend-react/node_modules/
+frontend-react/.deps/
 
 # build outputs
 dist/
 frontend-react/dist/
 frontend-react/dist-electron/
+frontend-react/public/downloads/*.apk
 frontend-react/*.tsbuildinfo
 build/
 .cache/

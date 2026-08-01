@@ -1,55 +1,49 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-function isPetWindow() {
-  return process.argv.includes('--firefly-pet-window') || window.location.hash === '#pet' || window.location.search.includes('pet=1');
-}
+type ScreenPoint = { x: number; y: number };
 
 function showMain() {
-  ipcRenderer.send('firefly:show-main');
-  return ipcRenderer.invoke('firefly:show-main');
+  return ipcRenderer.invoke('firefly:show-main') as Promise<boolean>;
 }
 
 function quit() {
-  ipcRenderer.send('firefly:quit');
-  return ipcRenderer.invoke('firefly:quit');
+  return ipcRenderer.invoke('firefly:quit') as Promise<void>;
 }
 
 function showPetMenu() {
   ipcRenderer.send('firefly:show-pet-menu');
 }
 
-if (isPetWindow()) {
-  const bindPetClick = () => {
-    const handlePointer = (event: MouseEvent | PointerEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (event.button === 0) {
-        ipcRenderer.send('firefly:show-main');
-      }
-    };
-    const preventMenu = (event: Event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      ipcRenderer.send('firefly:show-pet-menu');
-    };
-    window.addEventListener('pointerdown', handlePointer, true);
-    window.addEventListener('mousedown', handlePointer, true);
-    window.addEventListener('contextmenu', preventMenu, true);
-    document.addEventListener('pointerdown', handlePointer, true);
-    document.addEventListener('mousedown', handlePointer, true);
-    document.addEventListener('contextmenu', preventMenu, true);
-  };
+function startPetDrag(point: ScreenPoint) {
+  ipcRenderer.send('firefly:pet-drag-start', point);
+}
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bindPetClick, { once: true });
-  } else {
-    bindPetClick();
-  }
+function movePet(point: ScreenPoint) {
+  ipcRenderer.send('firefly:pet-drag-move', point);
+}
+
+function endPetDrag() {
+  ipcRenderer.send('firefly:pet-drag-end');
+}
+
+function setPetMousePassthrough(ignore: boolean) {
+  ipcRenderer.send('firefly:set-pet-mouse-passthrough', ignore);
+}
+
+function onPetAction(callback: (action: string) => void) {
+  const listener = (_event: Electron.IpcRendererEvent, action: string) => callback(action);
+  ipcRenderer.on('firefly:pet-action', listener);
+  return () => ipcRenderer.removeListener('firefly:pet-action', listener);
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
   platform: process.platform,
   showMain,
   showPetMenu,
+  startPetDrag,
+  movePet,
+  endPetDrag,
+  setPetMousePassthrough,
+  onPetAction,
   quit,
 });
