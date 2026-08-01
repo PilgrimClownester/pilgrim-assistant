@@ -1,11 +1,25 @@
+import hmac
 import json
 import re
 from datetime import date, datetime, timedelta
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+
+from backend.auth import (
+    AUTH_COOKIE_NAME,
+    AUTH_SESSION_SECONDS,
+    AUTH_USERNAME,
+    auth_enabled,
+    clear_failed_logins,
+    create_session,
+    login_allowed,
+    record_failed_login,
+    request_is_authenticated,
+    verify_password,
+)
 
 from backend.bazi.chart import build_bazi_chart
 from backend.bazi.models import BaziAnalyzeRequest, BaziQuestion, BirthInfo
@@ -141,6 +155,23 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def require_cloud_auth(request: Request, call_next):
+    public_paths = {"/health", "/auth/login", "/auth/status"}
+    if (
+        auth_enabled()
+        and request.method != "OPTIONS"
+        and request.url.path not in public_paths
+        and not request_is_authenticated(request)
+    ):
+        return Response(
+            content=json.dumps({"detail": "authentication required"}),
+            status_code=401,
+            media_type="application/json",
+        )
+    return await call_next(request)
+
+
 class TarotRequest(BaseModel):
     question: str = Field(..., min_length=1)
     spread: str = "three"
@@ -148,6 +179,52 @@ class TarotRequest(BaseModel):
 
 class YijingRequest(BaseModel):
     question: str = Field(..., min_length=1)
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(..., min_length=1, max_length=80)
+    password: str = Field(..., min_length=1, max_length=256)
+
+
+@app.get("/auth/status")
+def auth_status(request: Request) -> dict[str, object]:
+    authenticated = request_is_authenticated(request)
+    return {
+        "enabled": auth_enabled(),
+        "authenticated": authenticated,
+        "username": AUTH_USERNAME if authenticated else None,
+    }
+
+
+@app.post("/auth/login")
+def auth_login(payload: LoginRequest, request: Request, response: Response) -> dict[str, object]:
+    if not auth_enabled():
+        return {"authenticated": True, "username": AUTH_USERNAME}
+    client_key = request.client.host if request.client else "unknown"
+    if not login_allowed(client_key):
+        raise HTTPException(status_code=429, detail="尝试次数过多，请稍后再试")
+    username_ok = hmac.compare_digest(payload.username, AUTH_USERNAME)
+    password_ok = verify_password(payload.password)
+    if not username_ok or not password_ok:
+        record_failed_login(client_key)
+        raise HTTPException(status_code=401, detail="用户名或密码不正确")
+    clear_failed_logins(client_key)
+    response.set_cookie(
+        key=AUTH_COOKIE_NAME,
+        value=create_session(AUTH_USERNAME),
+        max_age=AUTH_SESSION_SECONDS,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        path="/",
+    )
+    return {"authenticated": True, "username": AUTH_USERNAME}
+
+
+@app.post("/auth/logout")
+def auth_logout(response: Response) -> dict[str, bool]:
+    response.delete_cookie(AUTH_COOKIE_NAME, path="/", secure=True, httponly=True, samesite="strict")
+    return {"authenticated": False}
 
 
 class ChatRequest(BaseModel):

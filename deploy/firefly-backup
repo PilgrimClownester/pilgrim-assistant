@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir=/home/ubuntu/Firefly/pilgrim-assistant
+backup_dir=/home/ubuntu/firefly-backups/daily
+stamp=$(date +%Y%m%d-%H%M%S)
+
+mkdir -p "$backup_dir"
+tar -C "$project_dir" -czf "$backup_dir/data-$stamp.tar.gz" data
+find "$backup_dir" -type f -name 'data-*.tar.gz' -mtime +14 -delete

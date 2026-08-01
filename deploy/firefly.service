@@ -1,0 +1,25 @@
+[Unit]
+Description=Firefly FastAPI service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/Firefly/pilgrim-assistant
+EnvironmentFile=/home/ubuntu/Firefly/pilgrim-assistant/.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/ubuntu/Firefly/pilgrim-assistant/.venv/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

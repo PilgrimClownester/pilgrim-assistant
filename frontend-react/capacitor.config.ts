@@ -5,10 +5,10 @@ const config: CapacitorConfig = {
   appName: 'Firefly',
   webDir: 'dist',
   server: {
-    // Firefly 的数据与模型仍运行在电脑端；蒲公英负责把这个私有地址送到手机。
-    url: 'http://172.16.1.164:5174',
-    cleartext: true,
-    allowNavigation: ['172.16.1.164'],
+    // 云端版直接加载同源生产站点；认证由 HttpOnly 安全会话完成。
+    url: 'https://154.8.193.111',
+    cleartext: false,
+    allowNavigation: ['154.8.193.111'],
   },
   android: {
     backgroundColor: '#120f24',

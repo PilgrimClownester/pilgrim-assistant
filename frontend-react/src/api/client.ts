@@ -7,6 +7,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`;
   const res = await fetch(url, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers,
@@ -15,10 +16,41 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => 'Unknown error');
+    if (res.status === 401 && path !== '/auth/login') {
+      window.dispatchEvent(new Event('firefly:unauthorized'));
+    }
     throw new Error(`API error ${res.status}: ${errorText}`);
   }
 
   return res.json();
+}
+
+export interface AuthStatus {
+  enabled: boolean;
+  authenticated: boolean;
+  username: string | null;
+}
+
+export function getAuthStatus(): Promise<AuthStatus> {
+  return request('/auth/status');
+}
+
+export async function login(username: string, password: string): Promise<{ authenticated: boolean; username: string }> {
+  try {
+    return await request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('429')) throw new Error('尝试次数过多，请稍后再试');
+    if (message.includes('401')) throw new Error('用户名或密码不正确');
+    throw new Error('无法登录，请检查网络后重试');
+  }
+}
+
+export function logout(): Promise<{ authenticated: boolean }> {
+  return request('/auth/logout', { method: 'POST' });
 }
 
 export function getHealth(): Promise<{ status: string }> {
@@ -56,7 +88,7 @@ export function postChat(message: string, history: unknown[] = []) {
 }
 
 export async function exportChatArchive(): Promise<Blob> {
-  const res = await fetch(`${API_BASE}/chat/archive/export`);
+  const res = await fetch(`${API_BASE}/chat/archive/export`, { credentials: 'include' });
   if (!res.ok) throw new Error(`导出失败（${res.status}）`);
   return res.blob();
 }

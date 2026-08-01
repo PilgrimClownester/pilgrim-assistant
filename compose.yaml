@@ -1,0 +1,62 @@
+name: firefly
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        PIP_INDEX_URL: ${FIREFLY_PIP_INDEX_URL:-https://pypi.org/simple}
+    image: firefly-api:${FIREFLY_IMAGE_TAG:-local}
+    restart: unless-stopped
+    stop_grace_period: 30s
+    env_file:
+      - path: .env
+        format: raw
+    user: "${FIREFLY_UID:-1000}:${FIREFLY_GID:-1000}"
+    volumes:
+      - type: bind
+        source: ./data
+        target: /app/data
+    expose:
+      - "8000"
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 20s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend-react/Dockerfile
+      args:
+        VITE_FIREFLY_API_BASE: /api
+    image: firefly-web:${FIREFLY_IMAGE_TAG:-local}
+    restart: unless-stopped
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${FIREFLY_HTTP_BIND:-127.0.0.1}:${FIREFLY_HTTP_PORT:-18080}:8080"
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:size=32m,mode=0755
+      - /var/run:size=8m,mode=0755
+
+networks:
+  internal:
+    driver: bridge

@@ -1,0 +1,7 @@
+[Unit]
+Description=Renew Firefly IP certificate
+After=network-online.target nginx.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/ubuntu/.venv-certbot/bin/certbot renew --quiet --deploy-hook "systemctl reload nginx"
