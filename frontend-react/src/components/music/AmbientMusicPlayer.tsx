@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getAmbientMusicUrl } from '../../api/client';
 import './AmbientMusicPlayer.css';
 
@@ -22,6 +22,18 @@ function AmbientMusicPlayer() {
     if (!audio || userPausedRef.current || !audio.paused) return;
     void audio.play().catch(() => setPlaying(false));
   }, []);
+
+  useEffect(() => {
+    const unlockPlayback = (event: Event) => {
+      if (!(event.target instanceof Element) || !event.target.closest('.ambient-music')) tryAutoplay();
+    };
+    document.addEventListener('pointerdown', unlockPlayback, { capture: true, once: true });
+    document.addEventListener('keydown', unlockPlayback, { capture: true, once: true });
+    return () => {
+      document.removeEventListener('pointerdown', unlockPlayback, true);
+      document.removeEventListener('keydown', unlockPlayback, true);
+    };
+  }, [tryAutoplay]);
 
   const togglePlayback = () => {
     const audio = audioRef.current;
@@ -68,7 +80,7 @@ function AmbientMusicPlayer() {
       <audio
         ref={audioRef}
         src={getAmbientMusicUrl()}
-        preload="metadata"
+        preload="auto"
         autoPlay
         loop
         onCanPlay={tryAutoplay}

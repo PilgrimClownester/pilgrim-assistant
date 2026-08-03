@@ -1,20 +1,26 @@
 .ambient-music {
-  position: relative;
+  position: fixed;
+  z-index: 90;
+  right: calc(var(--right-panel-width) + 16px);
+  bottom: 16px;
   display: grid;
+  width: min(340px, calc(100vw - var(--right-panel-width) - 32px));
   min-height: 76px;
   grid-template-columns: 42px minmax(0, 1fr) 42px;
   align-items: center;
   gap: 13px;
-  margin-bottom: 14px;
   padding: 10px 14px;
   overflow: hidden;
   border: 1px solid rgba(67, 159, 176, 0.16);
   border-radius: 20px;
   background:
     radial-gradient(circle at 8% 30%, rgba(90, 190, 177, 0.14), transparent 26%),
-    linear-gradient(140deg, rgba(250, 254, 254, 0.78), rgba(235, 248, 247, 0.68));
-  box-shadow: 0 10px 24px rgba(43, 96, 115, 0.06);
+    linear-gradient(140deg, rgba(250, 254, 254, 0.94), rgba(235, 248, 247, 0.91));
+  box-shadow: 0 14px 34px rgba(34, 86, 105, 0.15);
+  backdrop-filter: blur(18px) saturate(1.2);
 }
+
+.app-root:not(:has(.right-panel)) > .ambient-music { right: 16px; }
 
 .ambient-music-mark,
 .ambient-music-toggle {
@@ -107,9 +113,18 @@
 
 .ambient-music audio { display: none; }
 
+@media (max-width: 980px) {
+  .ambient-music {
+    right: 14px;
+    width: min(340px, calc(100vw - 28px));
+  }
+}
+
 @media (max-width: 760px) {
   .ambient-music {
-    order: 5;
+    right: 12px;
+    bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px) + 9px);
+    width: calc(100vw - 24px);
     min-height: 70px;
     grid-template-columns: 38px minmax(0, 1fr) 40px;
     gap: 10px;

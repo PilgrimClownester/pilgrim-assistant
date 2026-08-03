@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { createTodo, getProfile, getSavedDailyFortune, getSchedule, getTodos, getWeeklySummary, saveReflection } from '../../api/client';
 import type { DailyFortuneResult } from '../../api/client';
 import type { ReflectionItem, ScheduleEvent, TodoItem, UserProfile, WeeklySummary } from '../../types';
-import AmbientMusicPlayer from '../music/AmbientMusicPlayer';
 import AppIcon from '../shared/AppIcon';
 import './HomeDashboard.css';
 
@@ -171,8 +170,6 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
         <div className="home-focus-copy"><span>LOCAL POMODORO</span><h3>{isMobile ? '专注' : '番茄钟'}</h3><p>{isMobile ? '只在本机计时。' : '只在当前设备计时，手机和电脑互不打断。'}</p></div>
         <button onClick={() => onStartFocus(view.todayActiveTodos[0]?.title || view.next?.title || (isMobile ? '自由专注' : '自由专注'))}>{isMobile ? '开始' : '开始专注'} <b>→</b></button>
       </section>
-
-      <AmbientMusicPlayer />
 
       <section className="home-insight-grid">
         <article className="home-weekly-card">
