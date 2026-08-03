@@ -254,3 +254,263 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/*
+ * Private phone mode
+ * ------------------
+ * The phone view is for using Firefly, not reading a product tour. Keep the
+ * actions, values and current item; let explanatory copy stay out of the way.
+ * Edge AI keeps its own research layout and is deliberately not targeted here.
+ */
+@media (max-width: 760px) {
+  :root { --mobile-nav-height: 72px; }
+
+  .main-layout > .content-area {
+    height: calc(100dvh - var(--mobile-nav-height) - env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Six deliberate destinations fit comfortably; everything else lives in More. */
+  .sidebar { height: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px)); }
+  .sidebar-nav--desktop { display: none !important; }
+  .sidebar-nav--mobile {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 2px;
+    padding: 5px 6px calc(5px + env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+  }
+  .sidebar-nav--mobile .nav-item {
+    width: 100%;
+    min-width: 0;
+    min-height: 58px;
+    padding: 4px 1px;
+    border-radius: 14px;
+  }
+  .sidebar-nav--mobile .nav-item::before { display: none; }
+  .sidebar-nav--mobile .nav-item--active {
+    color: #207f9e;
+    background: linear-gradient(180deg, rgba(75,181,205,.15), rgba(105,216,194,.06)) !important;
+    box-shadow: inset 0 3px 0 #3aa8bf !important;
+  }
+  .sidebar-nav--mobile .nav-item-icon { width: 26px; height: 26px; }
+  .sidebar-nav--mobile .nav-item-icon svg { width: 18px; height: 18px; }
+  .sidebar-nav--mobile .nav-item-mobile-label { font-size: .59rem; }
+
+  /* Home: one greeting, one daily line, then today's actions. */
+  .home-dashboard { padding: 14px 12px 26px; }
+  .home-eyebrow { display: none; }
+  .home-header {
+    grid-template-columns: minmax(0, 1fr) 104px;
+    align-items: start;
+    gap: 9px;
+    margin-bottom: 11px;
+  }
+  .home-header h2 { font-size: 1.4rem; }
+  .home-date-line { margin-top: 4px !important; font-size: .66rem !important; }
+  .home-date-note { display: block; max-width: 170px; margin-top: 3px; font-size: .62rem; }
+  .home-header-actions { gap: 5px; }
+  .home-mobile-fortune { min-height: 62px; padding: 8px; border-radius: 14px; }
+  .home-mobile-fortune small { display: none; }
+  .home-mobile-fortune > div { grid-template-columns: 25px minmax(0, 1fr); margin-top: 0; gap: 5px; }
+  .home-mobile-fortune strong { width: 25px; height: 25px; font-size: .66rem; }
+  .home-mobile-fortune div span { font-size: .58rem; }
+  .home-header-actions .home-reminder-toggle {
+    width: 34px;
+    min-height: 30px;
+    align-self: flex-end;
+    padding: 5px;
+    font-size: 0;
+  }
+  .home-header-actions .home-reminder-toggle span::after { content: '提醒'; font-size: .58rem; }
+  .home-header-actions .home-reminder-toggle i { width: 7px; height: 7px; }
+  .home-mobile-firefly { right: 84px; bottom: -17px; width: 62px; height: 58px; opacity: .88; }
+  .home-workspace-strip { display: none !important; }
+  .home-flow-grid { gap: 8px; margin-bottom: 10px; }
+  .home-flow-card { padding: 12px; border-radius: 16px; }
+  .home-flow-card > header { margin-bottom: 7px; }
+  .home-flow-card header > div > span { display: none; }
+  .home-flow-card header h3 { font-size: .84rem; }
+  .home-flow-card header button { min-height: 29px; padding: 4px 8px; font-size: .57rem; }
+  .home-agenda > div { min-height: 38px; grid-template-columns: 38px 8px minmax(0, 1fr) auto; gap: 6px; }
+  .home-agenda > div > span small,
+  .home-task-list span small { display: none; }
+  .home-agenda > div > span strong,
+  .home-task-list span strong { font-size: .64rem; }
+  .home-empty-line { min-height: 62px; gap: 4px; }
+  .home-empty-line span { width: 27px; height: 27px; border-radius: 9px; font-size: .72rem; }
+  .home-empty-line p { font-size: .61rem; }
+  .home-today-metrics { gap: 7px; margin-bottom: 10px; }
+  .home-today-metrics > button,
+  .home-today-metrics > article { min-height: 64px; padding: 9px 11px; border-radius: 14px; }
+  .home-today-metrics strong { margin: 5px 0 2px; font-size: 1.05rem; }
+  .home-focus-launcher { grid-template-columns: 43px minmax(0, 1fr) auto; gap: 8px; margin-bottom: 10px; padding: 10px; border-radius: 15px; }
+  .home-focus-icon { width: 41px; height: 41px; border-radius: 12px; }
+  .home-focus-copy > span,
+  .home-focus-copy p,
+  .home-review-card > header > div > span { display: none; }
+  .home-focus-copy h3 { font-size: .78rem; }
+  .home-focus-launcher > button { min-width: 78px; min-height: 35px; padding-inline: 8px; font-size: .59rem; }
+  .home-weekly-card { display: none; }
+  .home-insight-grid { display: block; margin-bottom: 10px; }
+  .home-review-card { padding: 12px; border-radius: 16px; }
+  .home-review-card > header { margin-bottom: 7px; }
+  .home-review-card > header h3 { font-size: .8rem; }
+  .home-review-card > p { min-height: 54px; padding-top: 14px; font-size: .62rem; }
+  .home-chat-entry { flex-direction: row; align-items: center; padding: 10px 12px; border-radius: 13px; }
+  .home-chat-entry span { font-size: 0; }
+  .home-chat-entry span::after { content: '和流萤聊聊'; font-size: .63rem; }
+  .home-chat-entry strong { font-size: 0; }
+  .home-chat-entry strong::after { content: '聊天 →'; font-size: .59rem; }
+
+  /* Chat: the conversation is the page. */
+  .chat-header { min-height: 62px; padding: 8px 12px; }
+  .chat-mobile-avatar { width: 42px; height: 42px; border-radius: 13px; }
+  .chat-mobile-avatar img { width: 48px; height: 48px; }
+  .chat-mobile-identity > div > span { display: none; }
+  .chat-qq-button { width: 34px; max-width: 34px; min-height: 32px; padding: 0; font-size: 0; }
+  .chat-qq-label--mobile { display: inline; font-size: 0; }
+  .chat-qq-label--mobile::after { content: 'QQ'; font-size: .58rem; }
+  .chat-starters > span { display: none; }
+  .chat-starters { margin-top: 0; }
+  .chat-starters button { min-height: 36px; padding: 8px 10px; font-size: .64rem; }
+
+  /* Keep controls; remove product-tour copy around them. */
+  .productivity-header > div > .productivity-eyebrow,
+  .schedule-header .productivity-eyebrow,
+  .workspace-head > div > .workspace-eyebrow,
+  .growth-header > div > span,
+  .creative-header > div > span,
+  .oracle-heading > .oracle-eyebrow,
+  .treehole-hero > span { display: none; }
+  .productivity-header > div > p,
+  .schedule-header > div > p,
+  .workspace-head > div > p,
+  .growth-header > div > p,
+  .creative-header > div > p,
+  .treehole-hero > p { display: none; }
+  .workspace-head-badge { display: none; }
+  .workspace-empty p { display: none; }
+  .growth-storage { display: none; }
+  .workspace-page,
+  .growth-page,
+  .creative-page,
+  .treehole-page { padding: 14px 12px 28px; }
+  .workspace-head,
+  .productivity-header,
+  .schedule-header,
+  .growth-header,
+  .creative-header { margin-bottom: 11px; }
+  .workspace-head h2,
+  .productivity-header h2,
+  .schedule-header h2,
+  .growth-header h2,
+  .creative-header h2 { font-size: 1.36rem; }
+
+  /* Todo */
+  .todo-page { padding: 14px 12px 26px; }
+  .todo-progress-orb { width: 62px; height: 62px; }
+  .todo-progress-orb::before { width: 49px; height: 49px; }
+  .todo-progress-orb b { font-size: .82rem; }
+  .todo-overview { gap: 7px; margin-bottom: 9px; }
+  .todo-overview article { min-height: 68px; padding: 9px 10px; border-radius: 14px; }
+  .todo-overview article small { display: none; }
+  .todo-overview article strong { margin: 5px 0 0; font-size: 1.12rem; }
+  .todo-capture-card,
+  .todo-board { padding: 12px; border-radius: 16px; }
+  .todo-capture-main small { display: none; }
+  .todo-board-head > div > span { display: none; }
+  .productivity-empty p { display: none; }
+
+  /* Schedule */
+  .schedule-page { padding: 14px 12px 26px; }
+  .schedule-date-nav { gap: 4px; }
+  .schedule-date-nav label small { display: none; }
+  .schedule-date-nav label { padding: 7px 8px; }
+  .schedule-date-nav .schedule-calendar-button { padding: 0 8px; font-size: 0; }
+  .schedule-date-nav .schedule-calendar-button span { font-size: .9rem; }
+  .schedule-day-hero { grid-template-columns: 66px minmax(0, 1fr); gap: 9px; padding: 12px; border-radius: 16px; }
+  .schedule-day-date { padding: 8px; border-radius: 12px; }
+  .schedule-day-date strong { font-size: 1.55rem; }
+  .schedule-day-copy > span,
+  .schedule-day-copy > p { display: none; }
+  .schedule-day-copy h3 { font-size: .8rem; }
+  .schedule-day-metrics { gap: 5px; margin-top: 9px; }
+  .schedule-day-metrics article { padding: 7px 5px; }
+  .schedule-day-metrics article span { font-size: .52rem; }
+  .schedule-compose,
+  .schedule-timeline-card { border-radius: 16px; }
+  .schedule-compose { padding: 12px; }
+  .schedule-compose-heading small { display: none; }
+  .schedule-compose-heading strong { font-size: .74rem; }
+  .schedule-timeline-card { padding: 12px 10px; }
+  .schedule-timeline-head > div > span { display: none; }
+
+  /* Workspace pages */
+  .inbox-capture { padding: 12px; }
+  .inbox-capture-foot > span { display: none; }
+  .inbox-history > header > div > .workspace-eyebrow,
+  .project-connections > header > .workspace-eyebrow,
+  .review-signals > header .workspace-eyebrow,
+  .review-reflection > header .workspace-eyebrow,
+  .review-plan > header .workspace-eyebrow,
+  .review-history > header .workspace-eyebrow { display: none; }
+  .inbox-preview,
+  .inbox-history,
+  .project-list,
+  .project-detail,
+  .project-connections,
+  .review-signals,
+  .review-reflection,
+  .review-plan { border-radius: 16px; }
+  .projects-overview,
+  .review-metrics { gap: 7px; }
+  .projects-overview article small,
+  .review-metrics article p { display: none; }
+  .project-detail-head > div > p,
+  .project-progress > p,
+  .project-connections > header > p,
+  .review-plan > header p { display: none; }
+  .review-metrics article { padding: 11px; }
+  .review-story-grid { gap: 9px; }
+
+  /* Growth, creative and the private vault */
+  .growth-metrics { gap: 7px; margin-bottom: 10px; }
+  .growth-metrics article { padding: 10px; border-radius: 14px; }
+  .growth-metrics article small { display: none; }
+  .growth-grid { gap: 9px; }
+  .growth-card { padding: 13px; border-radius: 15px; }
+  .growth-card-title { margin-bottom: 10px; }
+  .growth-card-title small,
+  .mode-grid small { display: none; }
+  .creative-tabs { margin-top: 9px; }
+  .mode-grid { gap: 6px; margin-bottom: 9px; }
+  .mode-grid button { padding: 10px; border-radius: 12px; }
+  .treehole-hero { margin: 0 auto 12px; }
+  .treehole-security { display: none; }
+  .treehole-seal,
+  .treehole-vault,
+  .treehole-revealed { padding: 13px; border-radius: 16px; }
+
+  /* Tools and settings */
+  .oracle-heading > p,
+  .daily-intro > p,
+  .daily-control .oracle-privacy-note,
+  .bazi-forecast-control .oracle-privacy-note { display: none; }
+  .oracle-heading h2 { font-size: 1.25rem; }
+  .oracle-tabs { margin-top: 7px; }
+  .settings-archive-heading p,
+  .settings-memory-heading p { display: none; }
+  .settings-page .frosted-card { padding: 14px !important; border-radius: 15px; }
+
+  .app-root:has(.oracle-page--tarot) .mobile-more-sheet {
+    border-color: rgba(205, 188, 255, .2);
+    background: rgba(29, 29, 64, .96);
+    box-shadow: 0 20px 50px rgba(5, 7, 25, .42);
+  }
+  .app-root:has(.oracle-page--tarot) .mobile-more-head { color: #f3efff; }
+  .app-root:has(.oracle-page--tarot) .mobile-more-head button { color: #d5c9f4; background: rgba(255,255,255,.08); }
+  .app-root:has(.oracle-page--tarot) .mobile-more-item { color: #c6bfdc; border-color: rgba(209,188,255,.14); background: rgba(255,255,255,.05); }
+  .app-root:has(.oracle-page--tarot) .mobile-more-item .nav-item-icon { color: #c4b3ef; background: rgba(255,255,255,.08); }
+  .app-root:has(.oracle-page--tarot) .mobile-more-item.is-active { color: #fff; background: linear-gradient(145deg, rgba(117,89,190,.42), rgba(67,151,160,.16)); }
+}

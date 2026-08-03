@@ -55,8 +55,31 @@ const navSections: NavSection[] = [
   },
 ];
 
+// The phone dock is intentionally small. Less-used tools stay one tap away in
+// the More sheet instead of competing for every pixel at the bottom of the
+// screen.
+const mobilePrimaryItems: NavSection['items'] = [
+  navSections[0].items[0],
+  navSections[0].items[1],
+  navSections[0].items[2],
+  navSections[1].items[2],
+  navSections[1].items[3],
+];
+
+const mobileMoreItems: NavSection['items'] = [
+  navSections[1].items[0],
+  navSections[1].items[1],
+  navSections[2].items[0],
+  navSections[2].items[1],
+  navSections[2].items[2],
+  navSections[3].items[0],
+  navSections[3].items[1],
+  navSections[4].items[0],
+];
+
 function Sidebar({ activePage, onNavigate }: SidebarProps) {
   const [backendOnline, setBackendOnline] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
 
   useEffect(() => {
     const check = async () => {
@@ -72,6 +95,11 @@ function Sidebar({ activePage, onNavigate }: SidebarProps) {
     return () => clearInterval(interval);
   }, []);
 
+  const navigate = (page: PageId) => {
+    setMobileMoreOpen(false);
+    onNavigate(page);
+  };
+
   return (
     <aside className="sidebar">
       <button type="button" className="sidebar-brand" onClick={() => onNavigate('home')} aria-label="返回今日首页">
@@ -84,7 +112,7 @@ function Sidebar({ activePage, onNavigate }: SidebarProps) {
         </div>
       </button>
 
-      <nav className="sidebar-nav">
+      <nav className="sidebar-nav sidebar-nav--desktop">
         {navSections.map((section) => (
           <div key={section.title} className="nav-section">
             <span className="nav-section-title">{section.title}</span>
@@ -93,7 +121,7 @@ function Sidebar({ activePage, onNavigate }: SidebarProps) {
                 key={item.id}
                 type="button"
                 className={`nav-item nav-item--${item.id} ${activePage === item.id ? 'nav-item--active' : ''}`}
-                onClick={() => onNavigate(item.id)}
+                onClick={() => navigate(item.id)}
                 aria-current={activePage === item.id ? 'page' : undefined}
               >
                 <span className="nav-item-icon"><AppIcon name={item.id} /></span>
@@ -104,6 +132,52 @@ function Sidebar({ activePage, onNavigate }: SidebarProps) {
           </div>
         ))}
       </nav>
+
+      <nav className="sidebar-nav--mobile" aria-label="主要页面">
+        {mobilePrimaryItems.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={`nav-item nav-item--${item.id} ${activePage === item.id ? 'nav-item--active' : ''}`}
+            onClick={() => navigate(item.id)}
+            aria-current={activePage === item.id ? 'page' : undefined}
+          >
+            <span className="nav-item-icon"><AppIcon name={item.id} /></span>
+            <span className="nav-item-mobile-label">{item.mobileLabel}</span>
+          </button>
+        ))}
+        <button
+          type="button"
+          className={`nav-item nav-item--more ${mobileMoreItems.some((item) => item.id === activePage) ? 'nav-item--active' : ''}`}
+          onClick={() => setMobileMoreOpen((open) => !open)}
+          aria-expanded={mobileMoreOpen}
+          aria-label="打开更多页面"
+        >
+          <span className="nav-item-icon"><span className="nav-more-dots">•••</span></span>
+          <span className="nav-item-mobile-label">更多</span>
+        </button>
+      </nav>
+
+      {mobileMoreOpen && (
+        <div className="mobile-more-layer" role="dialog" aria-label="更多页面" onClick={() => setMobileMoreOpen(false)}>
+          <div className="mobile-more-sheet" onClick={(event) => event.stopPropagation()}>
+            <div className="mobile-more-head"><strong>更多</strong><button type="button" onClick={() => setMobileMoreOpen(false)} aria-label="关闭">×</button></div>
+            <div className="mobile-more-grid">
+              {mobileMoreItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`mobile-more-item ${activePage === item.id ? 'is-active' : ''}`}
+                  onClick={() => navigate(item.id)}
+                >
+                  <span className="nav-item-icon"><AppIcon name={item.id} /></span>
+                  <span>{item.mobileLabel}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="sidebar-footer">
         <span className={`status-dot ${backendOnline ? 'status-dot--online' : 'status-dot--offline'}`} />
