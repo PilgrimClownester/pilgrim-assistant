@@ -1,5 +1,5 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
-import { getAuthStatus, login, logout } from '../../api/client';
+import { getAuthStatus, login } from '../../api/client';
 import './AuthGate.css';
 
 type AuthState = 'checking' | 'authenticated' | 'anonymous' | 'offline';
@@ -34,8 +34,17 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       setState('anonymous');
       setError('登录已失效，请重新登录');
     };
+    const handleLoggedOut = () => {
+      window.localStorage.removeItem(OFFLINE_AUTH_KEY);
+      setAuthEnabled(true);
+      setState('anonymous');
+    };
     window.addEventListener('firefly:unauthorized', handleUnauthorized);
-    return () => window.removeEventListener('firefly:unauthorized', handleUnauthorized);
+    window.addEventListener('firefly:logout', handleLoggedOut);
+    return () => {
+      window.removeEventListener('firefly:unauthorized', handleUnauthorized);
+      window.removeEventListener('firefly:logout', handleLoggedOut);
+    };
   }, []);
 
   const handleSubmit = async (event: FormEvent) => {
@@ -54,23 +63,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleLogout = async () => {
-    await logout().catch(() => undefined);
-    window.localStorage.removeItem(OFFLINE_AUTH_KEY);
-    setState('anonymous');
-  };
-
   if (state === 'authenticated') {
-    return (
-      <>
-        {children}
-        {authEnabled && (
-          <button className="auth-logout-button" type="button" onClick={handleLogout} aria-label="退出 Firefly">
-            退出
-          </button>
-        )}
-      </>
-    );
+    return <>{children}</>;
   }
 
   return (

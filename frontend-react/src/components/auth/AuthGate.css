@@ -35,15 +35,8 @@
 .auth-form button:disabled { opacity: 0.55; cursor: default; }
 .auth-error { margin: -4px 2px 0; color: #bd4b5c; font-size: 12px; }
 .auth-security { margin: 22px 0 0; color: #78909d; font-size: 11px; }
-.auth-logout-button { position: fixed; z-index: 1200; right: 14px; bottom: 14px; border: 1px solid rgba(63, 125, 145, 0.2); border-radius: 999px; padding: 7px 11px; color: #537384; background: rgba(244, 251, 253, 0.8); backdrop-filter: blur(12px); cursor: pointer; opacity: 0.68; }
-.auth-logout-button:hover { opacity: 1; }
 
 @media (max-width: 520px) {
   .auth-page { padding: 16px; }
   .auth-card { padding: 34px 22px 26px; border-radius: 26px; }
-}
-
-/* The phone dock owns the lower-right corner; keep logout on desktop only. */
-@media (max-width: 760px) {
-  .auth-logout-button { display: none; }
 }

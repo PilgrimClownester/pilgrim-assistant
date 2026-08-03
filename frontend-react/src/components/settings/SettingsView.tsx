@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import FrostedCard from '../shared/FrostedCard';
-import { createMemory, deleteMemory, exportChatArchive, getMemories, getNapcatStatus, getProfile, postBaziChart, saveProfile, startNapcat, stopNapcat } from '../../api/client';
+import { createMemory, deleteMemory, exportChatArchive, getMemories, getNapcatStatus, getProfile, logout, postBaziChart, saveProfile, startNapcat, stopNapcat } from '../../api/client';
 import type { BirthInfo, CompanionMemory, UserProfile } from '../../types';
 import BaziChartView from './BaziChartView';
 import './SettingsView.css';
@@ -67,6 +67,11 @@ function SettingsView() {
     await saveProfile(profile);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleLogout = async () => {
+    await logout().catch(() => undefined);
+    window.dispatchEvent(new Event('firefly:logout'));
   };
 
   const update = (key: keyof UserProfile, value: string | number | boolean | null) => {
@@ -151,7 +156,10 @@ function SettingsView() {
     <div className="settings-page" style={pageStyle}>
       <div style={headerStyle}>
         <h2 style={titleStyle}>设置</h2>
-        <button onClick={handleSave} style={primaryButtonStyle}>{saved ? '已保存' : '保存档案'}</button>
+        <div className="settings-header-actions">
+          <button type="button" className="settings-logout-button" onClick={handleLogout}>退出登录</button>
+          <button type="button" onClick={handleSave} style={primaryButtonStyle}>{saved ? '已保存' : '保存档案'}</button>
+        </div>
       </div>
 
       <div style={gridStyle}>
