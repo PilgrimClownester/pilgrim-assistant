@@ -1,81 +1,124 @@
 .ambient-music {
   position: relative;
-  display: flex;
-  min-height: 88px;
+  display: grid;
+  min-height: 76px;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
   align-items: center;
-  justify-content: space-between;
-  gap: 18px;
+  gap: 13px;
   margin-bottom: 14px;
-  padding: 0 16px 0 19px;
+  padding: 10px 14px;
   overflow: hidden;
   border: 1px solid rgba(67, 159, 176, 0.16);
   border-radius: 20px;
   background:
-    radial-gradient(circle at 12% 30%, rgba(90, 190, 177, 0.13), transparent 28%),
-    linear-gradient(140deg, rgba(250, 254, 254, 0.76), rgba(235, 248, 247, 0.66));
+    radial-gradient(circle at 8% 30%, rgba(90, 190, 177, 0.14), transparent 26%),
+    linear-gradient(140deg, rgba(250, 254, 254, 0.78), rgba(235, 248, 247, 0.68));
   box-shadow: 0 10px 24px rgba(43, 96, 115, 0.06);
 }
 
-.ambient-music::after {
-  content: '';
-  position: absolute;
-  left: 58px;
-  width: 90px;
-  height: 90px;
-  pointer-events: none;
-  border-radius: 50%;
-  background: rgba(89, 190, 178, 0.1);
-  filter: blur(28px);
-}
-
-.ambient-music-label {
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #4b777e;
-  font-size: 0.68rem;
-  letter-spacing: 0.04em;
-}
-
-.ambient-music-label > span {
+.ambient-music-mark,
+.ambient-music-toggle {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 42px;
+  height: 42px;
   place-items: center;
+  border-radius: 14px;
+}
+
+.ambient-music-mark {
   color: white;
   font-family: Georgia, serif;
-  font-size: 1rem;
-  border-radius: 12px;
+  font-size: 1.05rem;
   background: linear-gradient(145deg, #55a9bd, #65bea9);
   box-shadow: 0 7px 16px rgba(53, 143, 156, 0.16);
 }
 
-.ambient-music iframe {
-  z-index: 1;
-  display: block;
-  width: 300px;
-  max-width: 100%;
-  flex: 0 0 300px;
-  border: 0;
-  color-scheme: light;
+.ambient-music-body { min-width: 0; }
+
+.ambient-music-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
 }
+
+.ambient-music-title span { min-width: 0; }
+.ambient-music-title strong,
+.ambient-music-title small { display: inline; }
+.ambient-music-title strong { color: #315c65; font-size: 0.72rem; }
+.ambient-music-title small { margin-left: 8px; color: #82979b; font-size: 0.58rem; }
+.ambient-music-title time { flex: 0 0 auto; color: #8b9da1; font-size: 0.54rem; }
+
+.ambient-music-progress {
+  width: 100%;
+  height: 4px;
+  margin-top: 10px;
+  cursor: pointer;
+  appearance: none;
+  border-radius: 999px;
+  outline: none;
+  background: linear-gradient(to right, #50aaaf var(--music-progress), rgba(69, 159, 176, 0.14) var(--music-progress));
+}
+
+.ambient-music-progress::-webkit-slider-thumb {
+  width: 11px;
+  height: 11px;
+  appearance: none;
+  border: 2px solid #f7ffff;
+  border-radius: 50%;
+  background: #4ba7ad;
+  box-shadow: 0 2px 6px rgba(42, 105, 117, 0.22);
+}
+
+.ambient-music-progress::-moz-range-thumb {
+  width: 8px;
+  height: 8px;
+  border: 2px solid #f7ffff;
+  border-radius: 50%;
+  background: #4ba7ad;
+  box-shadow: 0 2px 6px rgba(42, 105, 117, 0.22);
+}
+
+.ambient-music-toggle {
+  color: white;
+  background: linear-gradient(145deg, #439eb5, #4bb198);
+  box-shadow: 0 7px 16px rgba(53, 143, 156, 0.18);
+}
+
+.ambient-music-toggle:hover { transform: translateY(-1px); }
+.ambient-music-toggle:active { transform: scale(0.96); }
+
+.ambient-music-toggle i {
+  width: 0;
+  height: 0;
+  margin-left: 3px;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 9px solid currentColor;
+}
+
+.ambient-music-toggle.is-playing i {
+  width: 9px;
+  height: 12px;
+  margin-left: 0;
+  border: 0;
+  background: linear-gradient(to right, currentColor 0 3px, transparent 3px 6px, currentColor 6px 9px);
+}
+
+.ambient-music audio { display: none; }
 
 @media (max-width: 760px) {
   .ambient-music {
     order: 5;
-    min-height: 88px;
-    padding: 0;
-    justify-content: center;
-    border-radius: 18px;
+    min-height: 70px;
+    grid-template-columns: 38px minmax(0, 1fr) 40px;
+    gap: 10px;
+    padding: 9px 11px;
+    border-radius: 17px;
   }
 
-  .ambient-music-label {
-    display: none;
-  }
-
-  .ambient-music iframe {
-    width: min(300px, 100%);
-    flex-basis: auto;
-  }
+  .ambient-music-mark { width: 38px; height: 38px; border-radius: 12px; }
+  .ambient-music-toggle { width: 40px; height: 40px; border-radius: 13px; }
+  .ambient-music-title small { display: none; }
+  .ambient-music-title time { font-size: 0.5rem; }
 }

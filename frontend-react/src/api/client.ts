@@ -76,6 +76,10 @@ export function getHealth(): Promise<{ status: string }> {
   return request('/health');
 }
 
+export function getAmbientMusicUrl(): string {
+  return `${API_BASE}/music/ambient`;
+}
+
 export function getNapcatStatus() {
   return request<{ enabled: boolean; allowed_qq: string }>('/qq/napcat');
 }
