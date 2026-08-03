@@ -99,10 +99,10 @@ export function saveProfile(profile: unknown) {
   });
 }
 
-export function postChat(message: string, history: unknown[] = []) {
+export function postChat(message: string, history: unknown[] = [], usePersistentContext = true) {
   return request<{ type: string; message: string; answer: string }>('/chat', {
     method: 'POST',
-    body: JSON.stringify({ message, history, session_id: CHAT_SESSION_ID }),
+    body: JSON.stringify({ message, history, session_id: CHAT_SESSION_ID, use_persistent_context: usePersistentContext }),
   });
 }
 

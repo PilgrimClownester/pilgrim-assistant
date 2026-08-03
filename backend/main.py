@@ -232,6 +232,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1)
     history: list[dict[str, str]] = Field(default_factory=list)
     session_id: str = Field(default="unknown", max_length=120)
+    use_persistent_context: bool = True
 
 
 class HabitCheckinRequest(BaseModel):
@@ -1413,13 +1414,18 @@ def chat(request: ChatRequest) -> dict[str, object]:
         f"  {build_projects_context()}"
         f"  {build_memory_context()}"
     )
+    context_messages = (
+        _build_persistent_chat_context(request.history)
+        if request.use_persistent_context
+        else _build_recent_chat_messages(request.history)
+    )
     try:
         answer = ask_deepseek(
             [
                 {"role": "system", "content": CHAT_SYSTEM_PROMPT},
                 {"role": "system", "content": FIREFLY_PARTNER_PROMPT},
                 {"role": "system", "content": prompt_with_profile},
-                *_build_persistent_chat_context(request.history),
+                *context_messages,
                 {"role": "user", "content": request.message},
             ],
             temperature=0.7,

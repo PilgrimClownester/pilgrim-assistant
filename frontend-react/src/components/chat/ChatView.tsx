@@ -37,7 +37,7 @@ function ChatView() {
 
   const handleClearLocalChat = () => {
     if (!hasLocalChat || isLoading || isHydrating) return;
-    if (window.confirm('只删除这台手机上的聊天缓存，不会删除云端记录。确定吗？')) clearLocalChat();
+    if (window.confirm('只删除这台手机上的聊天缓存，不会删除云端记录，也不会在这台手机上自动恢复旧聊天。确定吗？')) clearLocalChat();
   };
 
   return (
@@ -67,7 +67,7 @@ function ChatView() {
           disabled={!hasLocalChat || isLoading || isHydrating}
           className="chat-clear-local-button"
           aria-label="删除本地聊天"
-          title="删除本地聊天"
+          title="删除本地聊天（不再自动恢复）"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h8m-9 0h10M9 5v-1h6v1m-8 3 1 12h6l1-12M10 10v7m4-7v7" /></svg>
         </button>

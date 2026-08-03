@@ -20,6 +20,7 @@ export interface UserProfile {
 export interface ChatRequest {
   message: string;
   history?: ChatHistoryItem[];
+  use_persistent_context?: boolean;
 }
 
 export interface ChatResponse {

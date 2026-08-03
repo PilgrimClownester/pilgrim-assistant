@@ -3,6 +3,7 @@ import type { Message, ScheduleEvent, TodoItem } from '../types';
 const DB_NAME = 'firefly-offline';
 const STORE_NAME = 'state';
 const DB_VERSION = 1;
+const CHAT_LOCAL_CLEAR_MARKER = 'firefly:chat-local-cleared';
 
 export interface ProductivityCache {
   todos: TodoItem[];
@@ -22,13 +23,14 @@ export interface EdgeAICache {
 export interface ChatCache {
   messages: Message[];
   cachedAt: string | null;
+  clearedLocally: boolean;
 }
 
 const emptyProductivity = (): ProductivityCache => ({
   todos: [], schedule: [], deleted: { todos: {}, schedule: {} }, cachedAt: null,
 });
 
-const emptyChat = (): ChatCache => ({ messages: [], cachedAt: null });
+const emptyChat = (): ChatCache => ({ messages: [], cachedAt: null, clearedLocally: false });
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -78,11 +80,28 @@ export async function getChatCache(): Promise<ChatCache> {
   return {
     messages: Array.isArray(cached?.messages) ? cached.messages : emptyChat().messages,
     cachedAt: cached?.cachedAt || null,
+    clearedLocally: cached?.clearedLocally === true || isChatLocallyCleared(),
   };
 }
 
 export async function saveChatCache(state: ChatCache): Promise<void> {
   await writeOfflineValue('chat', state);
+}
+
+export function isChatLocallyCleared(): boolean {
+  try {
+    return window.localStorage.getItem(CHAT_LOCAL_CLEAR_MARKER) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function markChatLocallyCleared(): void {
+  try {
+    window.localStorage.setItem(CHAT_LOCAL_CLEAR_MARKER, '1');
+  } catch {
+    // IndexedDB 仍会保存删除标记；某些隐私模式会禁用 localStorage。
+  }
 }
 
 export async function getEdgeAICache(): Promise<EdgeAICache> {
