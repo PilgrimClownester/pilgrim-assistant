@@ -62,10 +62,6 @@ export default function EdgeAILearning() {
   const move = (delta: number) => setActive((current) => (current + delta + stages.length) % stages.length);
 
   return <section className="edge-learning" aria-label="Edge AI Learning 八月学习规划">
-    <header className="edge-learning-head">
-      <span>EDGE AI LEARNING</span>
-    </header>
-
     <div className="edge-desktop-plan">
       {['AI 计算基础','Accelerator 架构','科研能力培养'].map((group) => <div className="edge-phase" key={group}>
         <div className="edge-phase-label"><span>{group}</span><small>{stages.filter((stage) => stage.group === group).length} STAGES</small></div>
@@ -76,16 +72,14 @@ export default function EdgeAILearning() {
     </div>
 
     <div className="edge-mobile-plan" onTouchStart={(event) => { const touch=event.touches[0]; touchStart.current={x:touch.clientX,y:touch.clientY}; }} onTouchEnd={(event) => { const start=touchStart.current; const touch=event.changedTouches[0]; touchStart.current=null; if(!start)return; const dx=touch.clientX-start.x; const dy=touch.clientY-start.y; if(Math.abs(dx)>48 && Math.abs(dx)>Math.abs(dy)*1.2) move(dx<0 ? 1 : -1); }}>
-      <div className="edge-mobile-nav"><button onClick={() => move(-1)} aria-label="上一个阶段">←</button><span>STAGE {active + 1} / 12</span><button onClick={() => move(1)} aria-label="下一个阶段">→</button></div>
       <StageCard key={stages[active].id} stage={stages[active]} done={completedSet.has(stages[active].id)} saving={saving === stages[active].id} onToggle={() => toggle(stages[active])} expandedQuestions />
-      <div className="edge-dots">{stages.map((stage,index) => <button key={stage.id} aria-label={`切换到阶段 ${index+1}`} onClick={() => setActive(index)} className={`${index === active ? 'is-active ' : ''}${completedSet.has(stage.id) ? 'is-done' : ''}`} />)}</div>
     </div>
   </section>;
 }
 
 function StageCard({ stage, done, saving, onToggle, expandedQuestions=false }: { stage:Stage; done:boolean; saving:boolean; onToggle:()=>void; expandedQuestions?:boolean }) {
   return <article className={`edge-stage-card${done ? ' is-done' : ''}`}>
-    <div className="edge-stage-top"><span>{String(stage.number).padStart(2,'0')}</span><div className="edge-stage-meta"><time>预计 2 天</time><em>{done ? '已完成' : '待完成'}</em></div></div>
+    <div className="edge-stage-top"><span>{String(stage.number).padStart(2,'0')}</span><div className="edge-stage-meta"><em>{done ? '已完成' : '待完成'}</em></div></div>
     <small>{stage.group}</small><h4>{stage.title}</h4>
     <section className="edge-stage-goal"><span>本阶段目标</span><p>{stage.goal}</p></section>
     <div className="edge-tags">{stage.topics.map((topic) => <i key={topic}>{topic}</i>)}</div>
