@@ -40,7 +40,7 @@ from backend.companion import (
     weekly_summary,
 )
 from backend.deepseek_client import ask_deepseek
-from backend.edge_ai_learning import EdgeAIStagePatch, get_edge_ai_progress, set_edge_ai_stage
+from backend.edge_ai_learning import EdgeAIStagePatch, EdgeAITaskPatch, get_edge_ai_progress, set_edge_ai_stage, set_edge_ai_task
 from backend.fortune.daily import (
     build_daily_user_prompt,
     generate_daily_seed,
@@ -369,6 +369,14 @@ def patch_edge_ai_stage(stage_id: str, patch: EdgeAIStagePatch) -> dict[str, obj
     state = set_edge_ai_stage(stage_id, patch.done)
     if state is None:
         raise HTTPException(status_code=404, detail="Learning stage not found")
+    return state
+
+
+@app.patch("/learning/edge-ai/{stage_id}/tasks/{task_id}")
+def patch_edge_ai_task(stage_id: str, task_id: str, patch: EdgeAITaskPatch) -> dict[str, object]:
+    state = set_edge_ai_task(stage_id, task_id, patch.checked)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Learning task not found")
     return state
 
 

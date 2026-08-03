@@ -14,6 +14,8 @@ export interface ProductivityCache {
 export interface EdgeAICache {
   completed: string[];
   pending: Record<string, boolean>;
+  task_checks: Record<string, string[]>;
+  pending_tasks: Record<string, boolean>;
   updated_at: string | null;
 }
 
@@ -65,7 +67,14 @@ export async function saveProductivityCache(state: ProductivityCache): Promise<v
 }
 
 export async function getEdgeAICache(): Promise<EdgeAICache> {
-  return (await readOfflineValue<EdgeAICache>('edge-ai')) || { completed: [], pending: {}, updated_at: null };
+  const cached = await readOfflineValue<Partial<EdgeAICache>>('edge-ai');
+  return {
+    completed: cached?.completed || [],
+    pending: cached?.pending || {},
+    task_checks: cached?.task_checks || {},
+    pending_tasks: cached?.pending_tasks || {},
+    updated_at: cached?.updated_at || null,
+  };
 }
 
 export async function saveEdgeAICache(state: EdgeAICache): Promise<void> {

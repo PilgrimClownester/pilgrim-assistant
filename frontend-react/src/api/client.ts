@@ -177,13 +177,14 @@ export function getTodos() {
 
 export interface EdgeAILearningProgress {
   completed: string[];
+  task_checks: Record<string, string[]>;
   updated_at: string | null;
 }
 
 export function getEdgeAILearningProgress(): Promise<EdgeAILearningProgress> {
   return getEdgeAICache().then(async (cached) => {
     void syncEdgeAI();
-    if (cached.updated_at || Object.keys(cached.pending).length) return { completed: cached.completed, updated_at: cached.updated_at };
+    if (cached.updated_at || Object.keys(cached.pending).length || Object.keys(cached.pending_tasks).length) return { completed: cached.completed, task_checks: cached.task_checks, updated_at: cached.updated_at };
     return syncEdgeAI();
   });
 }
@@ -192,10 +193,25 @@ export async function updateEdgeAIStage(stageId: string, done: boolean): Promise
   const cached = await getEdgeAICache();
   const completed = new Set(cached.completed);
   done ? completed.add(stageId) : completed.delete(stageId);
-  const next = { completed: [...completed], pending: { ...cached.pending, [stageId]: done }, updated_at: localTimestamp() };
+  const next = { ...cached, completed: [...completed], pending: { ...cached.pending, [stageId]: done }, updated_at: localTimestamp() };
   await saveEdgeAICache(next);
   void syncEdgeAI();
-  return { completed: next.completed, updated_at: next.updated_at };
+  return { completed: next.completed, task_checks: next.task_checks, updated_at: next.updated_at };
+}
+
+export async function updateEdgeAITask(stageId: string, taskId: string, checked: boolean): Promise<EdgeAILearningProgress> {
+  const cached = await getEdgeAICache();
+  const checks = new Set(cached.task_checks[stageId] || []);
+  checked ? checks.add(taskId) : checks.delete(taskId);
+  const next = {
+    ...cached,
+    task_checks: { ...cached.task_checks, [stageId]: [...checks] },
+    pending_tasks: { ...cached.pending_tasks, [taskId]: checked },
+    updated_at: localTimestamp(),
+  };
+  await saveEdgeAICache(next);
+  void syncEdgeAI();
+  return { completed: next.completed, task_checks: next.task_checks, updated_at: next.updated_at };
 }
 
 export async function createTodo(todo: unknown) {
@@ -336,16 +352,30 @@ export function syncEdgeAI(): Promise<EdgeAILearningProgress> {
     for (const [stageId, done] of Object.entries(snapshot.pending)) {
       await request(`/learning/edge-ai/${stageId}`, { method: 'PATCH', body: JSON.stringify({ done }) });
     }
+    for (const [taskId, checked] of Object.entries(snapshot.pending_tasks)) {
+      const stageId = taskId.match(/^stage-\d+/)?.[0];
+      if (stageId) await request(`/learning/edge-ai/${stageId}/tasks/${taskId}`, { method: 'PATCH', body: JSON.stringify({ checked }) });
+    }
     const remote = await request<EdgeAILearningProgress>('/learning/edge-ai');
     const latest = await getEdgeAICache();
     const pending = { ...latest.pending };
+    const pendingTasks = { ...latest.pending_tasks };
     Object.keys(snapshot.pending).forEach((stageId) => delete pending[stageId]);
+    Object.keys(snapshot.pending_tasks).forEach((taskId) => delete pendingTasks[taskId]);
     const completed = new Set(remote.completed);
     Object.entries(pending).forEach(([stageId, done]) => done ? completed.add(stageId) : completed.delete(stageId));
-    const state = { completed: [...completed], pending, updated_at: remote.updated_at || localTimestamp() };
+    const taskChecks: Record<string, string[]> = { ...remote.task_checks };
+    Object.entries(pendingTasks).forEach(([taskId, checked]) => {
+      const stageId = taskId.match(/^stage-\d+/)?.[0];
+      if (!stageId) return;
+      const checks = new Set(taskChecks[stageId] || []);
+      checked ? checks.add(taskId) : checks.delete(taskId);
+      taskChecks[stageId] = [...checks];
+    });
+    const state = { completed: [...completed], pending, task_checks: taskChecks, pending_tasks: pendingTasks, updated_at: remote.updated_at || localTimestamp() };
     await saveEdgeAICache(state);
     window.dispatchEvent(new CustomEvent('firefly:edge-ai-cache', { detail: state }));
-    return { completed: state.completed, updated_at: state.updated_at };
+    return { completed: state.completed, task_checks: state.task_checks, updated_at: state.updated_at };
   })().finally(() => { edgeAISync = null; });
   edgeAISync.catch(() => undefined);
   return edgeAISync;
