@@ -59,13 +59,11 @@ export default function EdgeAILearning() {
     } finally { setSaving(null); }
   };
 
-  const progress = Math.round(completed.length / stages.length * 100);
   const move = (delta: number) => setActive((current) => (current + delta + stages.length) % stages.length);
 
   return <section className="edge-learning" aria-label="Edge AI Learning 八月学习规划">
     <header className="edge-learning-head">
-      <div><span>EDGE AI LEARNING · AUGUST</span><h3>从模型计算，到端侧系统</h3><p>12 个阶段 × 每阶段 2 天 · AI Model → Accelerator → Edge AI System</p></div>
-      <div className="edge-progress"><strong>{completed.length}<small> / 12</small></strong><span>本月完成</span><i><b style={{width:`${progress}%`}} /></i></div>
+      <span>EDGE AI LEARNING</span>
     </header>
 
     <div className="edge-desktop-plan">
