@@ -9,6 +9,7 @@ import ToolsView from './components/tools/ToolsView';
 import SettingsView from './components/settings/SettingsView';
 import DesktopPet from './components/pet/DesktopPet';
 import HomeDashboard from './components/home/HomeDashboard';
+import EdgeAILearning from './components/home/EdgeAILearning';
 import FocusOverlay from './components/focus/FocusOverlay';
 import ReminderWatcher from './components/reminders/ReminderWatcher';
 import GrowthView from './components/growth/GrowthView';
@@ -47,6 +48,8 @@ function App() {
     switch (activePage) {
       case 'home':
         return <HomeDashboard onNavigate={setActivePage} onStartFocus={setFocusTarget} />;
+      case 'edge-ai':
+        return <main className="edge-learning-page"><EdgeAILearning /></main>;
       case 'chat':
         return <ChatView />;
       case 'todo':
@@ -78,7 +81,7 @@ function App() {
     <div className="app-root">
       <MainLayout
         sidebar={<Sidebar activePage={activePage} onNavigate={setActivePage} />}
-        rightPanel={['inbox', 'projects', 'review'].includes(activePage) ? null :
+        rightPanel={['edge-ai', 'inbox', 'projects', 'review'].includes(activePage) ? null :
           <RightPanel
             mode={activePage === 'tools' ? 'fortune' : activePage === 'home' ? 'home' : 'productivity'}
             onOpenDaily={() => setActivePage('tools')}

@@ -19,6 +19,7 @@ const navSections: NavSection[] = [
     title: '主功能',
     items: [
       { id: 'home', label: '今日首页', mobileLabel: '首页' },
+      { id: 'edge-ai', label: 'Edge AI Learning', mobileLabel: '学习' },
       { id: 'chat', label: '对话', mobileLabel: '对话' },
     ],
   },

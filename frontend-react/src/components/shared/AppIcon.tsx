@@ -8,6 +8,7 @@ type AppIconProps = {
 
 const paths: Record<PageId, ReactNode> = {
   home: <><path d="M4 11.5 12 5l8 6.5" /><path d="M6.5 10.5V20h11v-9.5M10 20v-5h4v5" /></>,
+  'edge-ai': <><path d="M5 4.5h10a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3Z" /><path d="M8 4.5V17a3 3 0 0 0 3 3M10.5 9h4M10.5 13h4" /><path d="m18 4 1-2 1 2 2 1-2 1-1 2-1-2-2-1Z" /></>,
   chat: <><path d="M5 18.5 3.8 21l3.9-1.4c1.2.6 2.7.9 4.3.9 5 0 9-3.6 9-8s-4-8-9-8-9 3.6-9 8c0 2.4 1.1 4.5 3 6Z" /><path d="M8 12h.01M12 12h.01M16 12h.01" /></>,
   inbox: <><path d="M4 5.5h16v14H4z" /><path d="M4 14h4l1.5 2h5l1.5-2h4M12 4v8m0 0 3-3m-3 3L9 9" /></>,
   projects: <><rect x="3.5" y="4" width="7" height="7" rx="2" /><rect x="13.5" y="4" width="7" height="7" rx="2" /><rect x="3.5" y="14" width="7" height="6" rx="2" /><rect x="13.5" y="14" width="7" height="6" rx="2" /></>,
