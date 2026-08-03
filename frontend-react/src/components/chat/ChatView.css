@@ -99,6 +99,10 @@
   background: rgba(105, 216, 194, 0.13);
 }
 
+.chat-clear-local-button {
+  display: none;
+}
+
 /* Message list */
 .message-list {
   flex: 1;

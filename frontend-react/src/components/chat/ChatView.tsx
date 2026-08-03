@@ -7,9 +7,10 @@ import ChatBackground from './ChatBackground';
 import LoadingDots from '../shared/LoadingDots';
 
 function ChatView() {
-  const { messages, isLoading, isHydrating, hydrate, sendMessage } = useChatStore();
+  const { messages, isLoading, isHydrating, hydrate, sendMessage, clearLocalChat } = useChatStore();
   const [qqEnabled, setQqEnabled] = useState(false);
   const [qqLoading, setQqLoading] = useState(true);
+  const hasLocalChat = messages.some((message) => message.id !== 'greeting' && message.role !== 'error');
 
   useEffect(() => {
     void hydrate();
@@ -34,6 +35,11 @@ function ChatView() {
     }
   };
 
+  const handleClearLocalChat = () => {
+    if (!hasLocalChat || isLoading || isHydrating) return;
+    if (window.confirm('只删除这台手机上的聊天缓存，不会删除云端记录。确定吗？')) clearLocalChat();
+  };
+
   return (
     <div className="chat-view">
       <ChatBackground />
@@ -54,6 +60,16 @@ function ChatView() {
         >
           <span className="chat-qq-label--desktop">{qqLoading ? 'QQ 连接中…' : qqEnabled ? 'QQ 对话：已开启' : '开启 QQ 对话'}</span>
           <span className="chat-qq-label--mobile">{qqLoading ? '连接中…' : qqEnabled ? 'QQ 已开启' : '连接 QQ'}</span>
+        </button>
+        <button
+          type="button"
+          onClick={handleClearLocalChat}
+          disabled={!hasLocalChat || isLoading || isHydrating}
+          className="chat-clear-local-button"
+          aria-label="删除本地聊天"
+          title="删除本地聊天"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h8m-9 0h10M9 5v-1h6v1m-8 3 1 12h6l1-12M10 10v7m4-7v7" /></svg>
         </button>
       </div>
       <MessageList messages={messages} onPrompt={sendMessage} />

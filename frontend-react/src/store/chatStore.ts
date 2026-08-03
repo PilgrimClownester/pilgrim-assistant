@@ -12,6 +12,7 @@ interface ChatStore {
   hydrate: () => Promise<void>;
   sendMessage: (text: string) => Promise<void>;
   clearMessages: () => void;
+  clearLocalChat: () => void;
 }
 
 let nextId = 1;
@@ -175,6 +176,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   clearMessages: () => {
     const next = [greeting()];
     set({ messages: next, error: null });
+    void cacheMessages(next);
+  },
+
+  clearLocalChat: () => {
+    const next = [greeting()];
+    set({ messages: next, error: null });
+    // 只清除本机 IndexedDB；服务器上的聊天归档保持不变。
     void cacheMessages(next);
   },
 }));
