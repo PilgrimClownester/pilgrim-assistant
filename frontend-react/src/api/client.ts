@@ -171,6 +171,22 @@ export function getTodos() {
   return request('/todos');
 }
 
+export interface EdgeAILearningProgress {
+  completed: string[];
+  updated_at: string | null;
+}
+
+export function getEdgeAILearningProgress(): Promise<EdgeAILearningProgress> {
+  return request('/learning/edge-ai');
+}
+
+export function updateEdgeAIStage(stageId: string, done: boolean): Promise<EdgeAILearningProgress> {
+  return request(`/learning/edge-ai/${stageId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ done }),
+  });
+}
+
 export function createTodo(todo: unknown) {
   return request('/todos', {
     method: 'POST',

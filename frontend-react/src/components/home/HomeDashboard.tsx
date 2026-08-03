@@ -3,6 +3,7 @@ import { createTodo, getProfile, getSavedDailyFortune, getSchedule, getTodos, ge
 import type { DailyFortuneResult } from '../../api/client';
 import type { ReflectionItem, ScheduleEvent, TodoItem, UserProfile, WeeklySummary } from '../../types';
 import AppIcon from '../shared/AppIcon';
+import EdgeAILearning from './EdgeAILearning';
 import './HomeDashboard.css';
 
 type HomeTarget = 'chat' | 'inbox' | 'projects' | 'review' | 'todo' | 'schedule' | 'tools';
@@ -117,6 +118,8 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
         <button onClick={() => onNavigate('projects')}><i><AppIcon name="projects" /></i><span><strong>项目驾驶舱</strong><small>看进度、风险与下一步</small></span><b>→</b></button>
         <button onClick={() => onNavigate('review')}><i><AppIcon name="review" /></i><span><strong>每周复盘</strong><small>回看足迹，安排下周</small></span><b>→</b></button>
       </section>
+
+      <EdgeAILearning />
 
       <section className="home-hero-grid">
         <article className="home-mainline-card">
