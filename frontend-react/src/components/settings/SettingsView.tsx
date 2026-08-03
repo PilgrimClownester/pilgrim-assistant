@@ -271,9 +271,9 @@ function SettingsView() {
         <FrostedCard className="settings-data-archive" style={{ padding: 22 }}>
           <div className="settings-archive-heading">
             <div>
-              <span>LOCAL DATA</span>
+              <span>CLOUD DATA</span>
               <h3>数据与聊天归档</h3>
-              <p>聊天会自动缓存在这台电脑；归档记录不会自动进入对话上下文。Todo、日程和占卜结果由电脑在两端共享。</p>
+              <p>聊天会自动保存到云端，重新打开或换设备也会接着显示；断网时保留本机缓存。Todo、日程和占卜结果由电脑在两端共享。</p>
             </div>
             <button type="button" onClick={downloadChatArchive} className="settings-archive-button">导出聊天记录</button>
           </div>

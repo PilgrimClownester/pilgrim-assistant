@@ -23,7 +23,7 @@ from backend.auth import (
 
 from backend.bazi.chart import build_bazi_chart
 from backend.bazi.models import BaziAnalyzeRequest, BaziQuestion, BirthInfo
-from backend.chat_archive import archive_chat_exchange, ensure_chat_archive, list_chat_archive
+from backend.chat_archive import archive_chat_exchange, ensure_chat_archive, list_chat_archive, list_chat_messages
 from backend.config import DEEPSEEK_FLASH_MODEL
 from backend.companion import (
     FocusSessionCreate,
@@ -433,6 +433,12 @@ def merge_productivity(payload: ProductivitySyncRequest) -> dict[str, object]:
 @app.get("/chat/archive")
 def read_chat_archive(limit: int = 500) -> dict[str, object]:
     return {"items": list_chat_archive(limit)}
+
+
+@app.get("/chat/history")
+def read_chat_history(limit: int = 500) -> dict[str, object]:
+    """返回网页、桌面端和手机端共同使用的云端聊天历史。"""
+    return {"items": list_chat_messages(limit)}
 
 
 @app.get("/chat/archive/export")
@@ -1327,8 +1333,19 @@ def _build_recent_chat_messages(history: list[dict[str, str]], max_messages: int
     return messages[-max_messages:]
 
 
+def _build_persistent_chat_context(history: list[dict[str, str]], max_messages: int = 16) -> list[dict[str, str]]:
+    """优先使用客户端上下文；客户端刚打开或未提供上下文时回退到云端归档。"""
+    if history:
+        return _build_recent_chat_messages(history, max_messages)
+    try:
+        archived = list_chat_messages(max_messages)
+    except OSError:
+        archived = []
+    return _build_recent_chat_messages(archived, max_messages)
+
+
 def _archive_chat_result(request: ChatRequest, result: dict[str, object]) -> dict[str, object]:
-    """归档失败不影响对话；归档数据也不会回填到模型上下文。"""
+    """归档失败不影响当前对话；下一轮请求会优先使用客户端上下文。"""
     try:
         archive_chat_exchange(
             session_id=request.session_id,
@@ -1402,7 +1419,7 @@ def chat(request: ChatRequest) -> dict[str, object]:
                 {"role": "system", "content": CHAT_SYSTEM_PROMPT},
                 {"role": "system", "content": FIREFLY_PARTNER_PROMPT},
                 {"role": "system", "content": prompt_with_profile},
-                *_build_recent_chat_messages(request.history),
+                *_build_persistent_chat_context(request.history),
                 {"role": "user", "content": request.message},
             ],
             temperature=0.7,

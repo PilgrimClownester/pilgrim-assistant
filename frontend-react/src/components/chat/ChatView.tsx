@@ -7,9 +7,13 @@ import ChatBackground from './ChatBackground';
 import LoadingDots from '../shared/LoadingDots';
 
 function ChatView() {
-  const { messages, isLoading, sendMessage } = useChatStore();
+  const { messages, isLoading, isHydrating, hydrate, sendMessage } = useChatStore();
   const [qqEnabled, setQqEnabled] = useState(false);
   const [qqLoading, setQqLoading] = useState(true);
+
+  useEffect(() => {
+    void hydrate();
+  }, [hydrate]);
 
   useEffect(() => {
     getNapcatStatus()
@@ -58,7 +62,7 @@ function ChatView() {
           <LoadingDots />
         </div>
       )}
-      <ChatInput onSend={sendMessage} disabled={isLoading} />
+      <ChatInput onSend={sendMessage} disabled={isLoading || isHydrating} />
     </div>
   );
 }

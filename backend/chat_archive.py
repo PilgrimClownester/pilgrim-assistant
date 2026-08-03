@@ -21,7 +21,7 @@ def archive_chat_exchange(
     assistant_message: str,
     response_type: str = "chat",
 ) -> dict[str, Any]:
-    """只做电脑端归档；归档内容不会被聊天提示词读取。"""
+    """把一次对话交换追加到服务器上的持久化归档。"""
     record = {
         "id": uuid4().hex,
         "session_id": session_id or "unknown",
@@ -57,6 +57,42 @@ def list_chat_archive(limit: int = 500) -> list[dict[str, Any]]:
         if isinstance(value, dict):
             records.append(value)
     return records
+
+
+def list_chat_messages(limit: int = 500) -> list[dict[str, Any]]:
+    """把交换记录展开成聊天界面可以直接恢复的消息列表。
+
+    归档文件以一问一答为单位存储，接口层再展开为消息，便于网页、桌面端和
+    手机端从同一份服务器数据恢复对话。旧记录没有单条消息时间时，沿用交换
+    的 ``created_at``。
+    """
+    message_limit = max(1, min(limit, 5000))
+    records = list_chat_archive((message_limit + 1) // 2)
+    messages: list[dict[str, Any]] = []
+    for record in records:
+        exchange_id = str(record.get("id") or uuid4().hex)
+        created_at = str(record.get("created_at") or "")
+        response_type = str(record.get("type") or "chat")
+        raw_messages = record.get("messages")
+        if not isinstance(raw_messages, list):
+            continue
+        for index, item in enumerate(raw_messages):
+            if not isinstance(item, dict):
+                continue
+            role = item.get("role")
+            content = item.get("content")
+            if role not in {"user", "assistant"} or not isinstance(content, str) or not content.strip():
+                continue
+            messages.append(
+                {
+                    "id": f"{exchange_id}-{role}-{index}",
+                    "role": role,
+                    "content": content,
+                    "created_at": created_at,
+                    "type": response_type,
+                }
+            )
+    return messages[-message_limit:]
 
 
 def ensure_chat_archive() -> Path:

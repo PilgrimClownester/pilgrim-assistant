@@ -3,9 +3,24 @@ import type { ProductivityCache } from './offlineStore';
 import { getEdgeAICache, getProductivityCache, localId, localTimestamp, saveEdgeAICache, saveProductivityCache } from './offlineStore';
 
 const API_BASE = import.meta.env.VITE_FIREFLY_API_BASE || 'http://127.0.0.1:8000';
-const CHAT_SESSION_ID = typeof crypto !== 'undefined' && 'randomUUID' in crypto
-  ? crypto.randomUUID()
-  : `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+function getChatSessionId(): string {
+  const storageKey = 'firefly:chat-session';
+  try {
+    const existing = window.localStorage.getItem(storageKey);
+    if (existing) return existing;
+    const value = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    window.localStorage.setItem(storageKey, value);
+    return value;
+  } catch {
+    return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+}
+
+const CHAT_SESSION_ID = getChatSessionId();
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`;
@@ -89,6 +104,19 @@ export function postChat(message: string, history: unknown[] = []) {
     method: 'POST',
     body: JSON.stringify({ message, history, session_id: CHAT_SESSION_ID }),
   });
+}
+
+export interface CloudChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+  type?: string;
+}
+
+export function getChatHistory(limit = 500): Promise<{ items: CloudChatMessage[] }> {
+  const safeLimit = Math.max(1, Math.min(5000, Math.floor(limit)));
+  return request(`/chat/history?limit=${safeLimit}`);
 }
 
 export async function exportChatArchive(): Promise<Blob> {

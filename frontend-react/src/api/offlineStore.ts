@@ -1,4 +1,4 @@
-import type { ScheduleEvent, TodoItem } from '../types';
+import type { Message, ScheduleEvent, TodoItem } from '../types';
 
 const DB_NAME = 'firefly-offline';
 const STORE_NAME = 'state';
@@ -19,9 +19,16 @@ export interface EdgeAICache {
   updated_at: string | null;
 }
 
+export interface ChatCache {
+  messages: Message[];
+  cachedAt: string | null;
+}
+
 const emptyProductivity = (): ProductivityCache => ({
   todos: [], schedule: [], deleted: { todos: {}, schedule: {} }, cachedAt: null,
 });
+
+const emptyChat = (): ChatCache => ({ messages: [], cachedAt: null });
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -64,6 +71,18 @@ export async function getProductivityCache(): Promise<ProductivityCache> {
 
 export async function saveProductivityCache(state: ProductivityCache): Promise<void> {
   await writeOfflineValue('productivity', state);
+}
+
+export async function getChatCache(): Promise<ChatCache> {
+  const cached = await readOfflineValue<Partial<ChatCache>>('chat');
+  return {
+    messages: Array.isArray(cached?.messages) ? cached.messages : emptyChat().messages,
+    cachedAt: cached?.cachedAt || null,
+  };
+}
+
+export async function saveChatCache(state: ChatCache): Promise<void> {
+  await writeOfflineValue('chat', state);
 }
 
 export async function getEdgeAICache(): Promise<EdgeAICache> {
