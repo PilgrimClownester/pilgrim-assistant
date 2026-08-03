@@ -10,6 +10,7 @@ Group=ubuntu
 WorkingDirectory=/home/ubuntu/Firefly/pilgrim-assistant
 EnvironmentFile=/home/ubuntu/Firefly/pilgrim-assistant/.env
 Environment=PYTHONUNBUFFERED=1
+Environment=TZ=Asia/Shanghai
 ExecStart=/home/ubuntu/Firefly/pilgrim-assistant/.venv/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips=127.0.0.1
 Restart=on-failure
 RestartSec=5

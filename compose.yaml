@@ -13,6 +13,8 @@ services:
     env_file:
       - path: .env
         format: raw
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
     user: "${FIREFLY_UID:-1000}:${FIREFLY_GID:-1000}"
     volumes:
       - type: bind
@@ -43,6 +45,8 @@ services:
     image: firefly-web:${FIREFLY_IMAGE_TAG:-local}
     restart: unless-stopped
     entrypoint: ["nginx", "-g", "daemon off;"]
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
     depends_on:
       api:
         condition: service_healthy
