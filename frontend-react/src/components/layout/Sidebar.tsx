@@ -153,7 +153,7 @@ function Sidebar({ activePage, onNavigate }: SidebarProps) {
           aria-expanded={mobileMoreOpen}
           aria-label="打开更多页面"
         >
-          <span className="nav-item-icon"><span className="nav-more-dots">•••</span></span>
+          <span className="nav-item-icon"><span className="nav-more-dots" aria-hidden="true"><i /><i /><i /></span></span>
           <span className="nav-item-mobile-label">更多</span>
         </button>
       </nav>

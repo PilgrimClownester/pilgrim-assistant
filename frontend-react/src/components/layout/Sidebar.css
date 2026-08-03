@@ -199,12 +199,22 @@
   .sidebar-footer { justify-content: center; padding-inline: 8px; }
 
   .nav-more-dots {
+    display: flex;
+    width: 15px;
+    height: 15px;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
     color: currentColor;
-    font-size: .88rem;
-    font-weight: 900;
-    letter-spacing: .08em;
-    line-height: 1;
-    transform: translateY(-2px);
+  }
+
+  .nav-more-dots i {
+    display: block;
+    width: 3px;
+    height: 3px;
+    flex: 0 0 3px;
+    border-radius: 50%;
+    background: currentColor;
   }
 
   .mobile-more-layer {
