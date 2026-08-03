@@ -17,6 +17,7 @@ import TreeholeView from './components/treehole/TreeholeView';
 import InboxView from './components/inbox/InboxView';
 import ProjectsView from './components/projects/ProjectsView';
 import WeeklyReviewView from './components/review/WeeklyReviewView';
+import NetworkStatus from './components/shared/NetworkStatus';
 import type { PageId } from './types';
 import './App.css';
 import './styles/mobile.css';
@@ -89,6 +90,7 @@ function App() {
         </div>
       </MainLayout>
       <ReminderWatcher />
+      <NetworkStatus />
       <FocusOverlay task={focusTarget} onClose={() => setFocusTarget(null)} />
     </div>
   );

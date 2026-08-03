@@ -1,0 +1,12 @@
+{
+  "name": "Firefly Assistant",
+  "short_name": "Firefly",
+  "description": "Firefly personal assistant",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#e8f7f7",
+  "theme_color": "#e8f7f7",
+  "icons": [
+    { "src": "./assets/firefly-catlie.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

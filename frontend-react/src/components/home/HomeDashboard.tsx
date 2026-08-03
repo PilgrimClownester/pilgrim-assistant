@@ -31,18 +31,26 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const [profileData, todoData, scheduleData, dailyData, weeklyData] = await Promise.allSettled([
-      getProfile(), getTodos(), getSchedule(), getSavedDailyFortune(), getWeeklySummary(),
-    ]);
-    if (profileData.status === 'fulfilled') setProfile(profileData.value as UserProfile);
+    const [todoData, scheduleData] = await Promise.allSettled([getTodos(), getSchedule()]);
     if (todoData.status === 'fulfilled') setTodos((todoData.value as { items: TodoItem[] }).items);
     if (scheduleData.status === 'fulfilled') setSchedule((scheduleData.value as { items: ScheduleEvent[] }).items);
-    if (dailyData.status === 'fulfilled') setDaily(dailyData.value.result);
-    if (weeklyData.status === 'fulfilled') setWeekly(weeklyData.value as WeeklySummary);
     setLoading(false);
+    void getProfile().then((data) => setProfile(data as UserProfile)).catch(() => {});
+    void getSavedDailyFortune().then((data) => setDaily(data.result)).catch(() => {});
+    void getWeeklySummary().then((data) => setWeekly(data as WeeklySummary)).catch(() => {});
   };
 
   useEffect(() => { load().catch(() => setLoading(false)); }, []);
+
+  useEffect(() => {
+    const useCache = (event: Event) => {
+      const detail = (event as CustomEvent<{ todos: TodoItem[]; schedule: ScheduleEvent[] }>).detail;
+      setTodos(detail.todos);
+      setSchedule(detail.schedule);
+    };
+    window.addEventListener('firefly:productivity-cache', useCache);
+    return () => window.removeEventListener('firefly:productivity-cache', useCache);
+  }, []);
 
   useEffect(() => {
     const refreshWeekly = () => getWeeklySummary().then((data) => setWeekly(data as WeeklySummary)).catch(() => {});

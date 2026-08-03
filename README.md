@@ -1,12 +1,14 @@
 # Firefly
 
-Firefly 是一个本地运行、接入 DeepSeek API 的**桌面陪伴型私人助手**。
+Firefly 是一个以服务器为数据与 AI 中心、同时支持浏览器、手机和 Electron 桌宠的私人助手。
 
 开发与维护资料见 [docs/README.md](docs/README.md)，包括架构、开发流程、UI 设计系统、备份恢复和代码审查报告。
 
 长期方向：轻盈青蓝色的磨砂玻璃 UI、左侧功能导航、右侧信息面板、桌面悬浮小人和可扩展的插件体系；加密树洞与部分运势工具保留更沉浸的独立主题。八字命理作为工具插件之一，不是主入口。
 
-当前主线：React + Electron 桌面应用 + FastAPI 后端 + DeepSeek API。
+当前主线：服务器运行 FastAPI、DeepSeek 与 NapCat/QQ；React Web 供手机和浏览器使用；笔记本保留 Electron 与桌宠窗口。
+
+待办、日程和 Edge AI 学习进度采用离线优先模式：已经登录过的设备会从 IndexedDB 立即读取数据，断网时仍可查看和编辑，恢复网络后通过时间戳与删除墓碑自动合并到服务器。AI 对话、占卜和 NapCat/QQ 仍需要网络。
 
 ## 启动方式
 

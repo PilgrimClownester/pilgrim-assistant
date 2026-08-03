@@ -55,8 +55,16 @@ function ScheduleView({ onStartFocus }: { onStartFocus?: (title: string) => void
     load(true);
     const timer = window.setInterval(() => load(), 12_000);
     const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    const useCache = (event: Event) => {
+      if (!mounted) return;
+      const detail = (event as CustomEvent<{ todos: TodoItem[]; schedule: ScheduleEvent[] }>).detail;
+      setItems(normalizeSchedule(detail.schedule));
+      setTodos(detail.todos);
+      setLoading(false);
+    };
     document.addEventListener('visibilitychange', onVisible);
-    return () => { mounted = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
+    window.addEventListener('firefly:productivity-cache', useCache);
+    return () => { mounted = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('firefly:productivity-cache', useCache); };
   }, []);
 
   const grouped = useMemo(() => sortSchedule(items).reduce<Record<string, ScheduleEvent[]>>((acc, item) => {

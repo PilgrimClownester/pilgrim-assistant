@@ -1,3 +1,7 @@
+import type { ScheduleEvent, TodoItem } from '../types';
+import type { ProductivityCache } from './offlineStore';
+import { getEdgeAICache, getProductivityCache, localId, localTimestamp, saveEdgeAICache, saveProductivityCache } from './offlineStore';
+
 const API_BASE = import.meta.env.VITE_FIREFLY_API_BASE || 'http://127.0.0.1:8000';
 const CHAT_SESSION_ID = typeof crypto !== 'undefined' && 'randomUUID' in crypto
   ? crypto.randomUUID()
@@ -168,7 +172,7 @@ export function syncFortuneResults(entries: FortuneSyncEntry[]): Promise<{ date:
 }
 
 export function getTodos() {
-  return request('/todos');
+  return cachedProductivity('todos');
 }
 
 export interface EdgeAILearningProgress {
@@ -177,58 +181,174 @@ export interface EdgeAILearningProgress {
 }
 
 export function getEdgeAILearningProgress(): Promise<EdgeAILearningProgress> {
-  return request('/learning/edge-ai');
-}
-
-export function updateEdgeAIStage(stageId: string, done: boolean): Promise<EdgeAILearningProgress> {
-  return request(`/learning/edge-ai/${stageId}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ done }),
+  return getEdgeAICache().then(async (cached) => {
+    void syncEdgeAI();
+    if (cached.updated_at || Object.keys(cached.pending).length) return { completed: cached.completed, updated_at: cached.updated_at };
+    return syncEdgeAI();
   });
 }
 
-export function createTodo(todo: unknown) {
-  return request('/todos', {
-    method: 'POST',
-    body: JSON.stringify(todo),
-  });
+export async function updateEdgeAIStage(stageId: string, done: boolean): Promise<EdgeAILearningProgress> {
+  const cached = await getEdgeAICache();
+  const completed = new Set(cached.completed);
+  done ? completed.add(stageId) : completed.delete(stageId);
+  const next = { completed: [...completed], pending: { ...cached.pending, [stageId]: done }, updated_at: localTimestamp() };
+  await saveEdgeAICache(next);
+  void syncEdgeAI();
+  return { completed: next.completed, updated_at: next.updated_at };
 }
 
-export function updateTodo(id: string, patch: unknown) {
-  return request(`/todos/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(patch),
-  });
+export async function createTodo(todo: unknown) {
+  const state = await getProductivityCache();
+  const now = localTimestamp();
+  const item = { id: localId('todo'), done: false, created_at: now, completed_at: null, updated_at: now, ...(todo as object) } as TodoItem;
+  state.todos.push(item);
+  state.cachedAt = now;
+  await saveProductivityCache(state);
+  announceProductivity(state);
+  void syncProductivity();
+  return { item };
 }
 
-export function deleteTodo(id: string) {
-  return request(`/todos/${id}`, {
-    method: 'DELETE',
-  });
+export async function updateTodo(id: string, patch: unknown) {
+  const state = await getProductivityCache();
+  const index = state.todos.findIndex((item) => item.id === id);
+  if (index < 0) throw new Error('任务不存在或尚未缓存');
+  const changes = patch as Partial<TodoItem>;
+  const doneChanged = typeof changes.done === 'boolean';
+  const item = { ...state.todos[index], ...changes, updated_at: localTimestamp(), ...(doneChanged ? { completed_at: changes.done ? localTimestamp() : null } : {}) };
+  state.todos[index] = item;
+  state.cachedAt = localTimestamp();
+  await saveProductivityCache(state);
+  announceProductivity(state);
+  void syncProductivity();
+  return { item };
+}
+
+export async function deleteTodo(id: string) {
+  const state = await getProductivityCache();
+  state.todos = state.todos.filter((item) => item.id !== id);
+  state.deleted.todos[id] = localTimestamp();
+  state.cachedAt = localTimestamp();
+  await saveProductivityCache(state);
+  announceProductivity(state);
+  void syncProductivity();
+  return { ok: true };
 }
 
 export function getSchedule() {
-  return request('/schedule');
+  return cachedProductivity('schedule');
 }
 
-export function createScheduleEvent(event: unknown) {
-  return request('/schedule', {
-    method: 'POST',
-    body: JSON.stringify(event),
-  });
+export async function createScheduleEvent(event: unknown) {
+  const state = await getProductivityCache();
+  const now = localTimestamp();
+  const item = { id: localId('event'), done: false, created_at: now, completed_at: null, updated_at: now, ...(event as object) } as ScheduleEvent;
+  state.schedule.push(item);
+  state.cachedAt = now;
+  await saveProductivityCache(state);
+  announceProductivity(state);
+  void syncProductivity();
+  return { item };
 }
 
-export function updateScheduleEvent(id: string, patch: unknown) {
-  return request(`/schedule/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(patch),
-  });
+export async function updateScheduleEvent(id: string, patch: unknown) {
+  const state = await getProductivityCache();
+  const index = state.schedule.findIndex((item) => item.id === id);
+  if (index < 0) throw new Error('日程不存在或尚未缓存');
+  const changes = patch as Partial<ScheduleEvent>;
+  const doneChanged = typeof changes.done === 'boolean';
+  const item = { ...state.schedule[index], ...changes, updated_at: localTimestamp(), ...(doneChanged ? { completed_at: changes.done ? localTimestamp() : null } : {}) };
+  state.schedule[index] = item;
+  state.cachedAt = localTimestamp();
+  await saveProductivityCache(state);
+  announceProductivity(state);
+  void syncProductivity();
+  return { item };
 }
 
-export function deleteScheduleEvent(id: string) {
-  return request(`/schedule/${id}`, {
-    method: 'DELETE',
-  });
+export async function deleteScheduleEvent(id: string) {
+  const state = await getProductivityCache();
+  state.schedule = state.schedule.filter((item) => item.id !== id);
+  state.deleted.schedule[id] = localTimestamp();
+  state.cachedAt = localTimestamp();
+  await saveProductivityCache(state);
+  announceProductivity(state);
+  void syncProductivity();
+  return { ok: true };
+}
+
+let productivitySync: Promise<ProductivityCache> | null = null;
+
+async function cachedProductivity(collection: 'todos' | 'schedule') {
+  const cached = await getProductivityCache();
+  if (cached.cachedAt) {
+    void syncProductivity();
+    return { items: cached[collection] };
+  }
+  const synced = await syncProductivity();
+  return { items: synced[collection] };
+}
+
+function announceProductivity(state: ProductivityCache, synced = false) {
+  window.dispatchEvent(new CustomEvent('firefly:productivity-cache', {
+    detail: { todos: state.todos, schedule: state.schedule, synced },
+  }));
+}
+
+export function syncProductivity(): Promise<ProductivityCache> {
+  if (productivitySync) return productivitySync;
+  productivitySync = (async () => {
+    const local = await getProductivityCache();
+    window.dispatchEvent(new CustomEvent('firefly:sync-status', { detail: 'syncing' }));
+    try {
+      const remote = await request<{ todos: TodoItem[]; schedule: ScheduleEvent[]; deleted: ProductivityCache['deleted'] }>('/sync/productivity', {
+        method: 'POST',
+        body: JSON.stringify({ todos: local.todos, schedule: local.schedule, deleted: local.deleted }),
+      });
+      const state: ProductivityCache = {
+        todos: remote.todos,
+        schedule: remote.schedule,
+        deleted: remote.deleted,
+        cachedAt: localTimestamp(),
+      };
+      await saveProductivityCache(state);
+      announceProductivity(state, true);
+      window.dispatchEvent(new CustomEvent('firefly:sync-status', { detail: 'synced' }));
+      return state;
+    } catch (error) {
+      window.dispatchEvent(new CustomEvent('firefly:sync-status', { detail: 'offline' }));
+      throw error;
+    } finally {
+      productivitySync = null;
+    }
+  })();
+  productivitySync.catch(() => undefined);
+  return productivitySync;
+}
+
+let edgeAISync: Promise<EdgeAILearningProgress> | null = null;
+
+export function syncEdgeAI(): Promise<EdgeAILearningProgress> {
+  if (edgeAISync) return edgeAISync;
+  edgeAISync = (async () => {
+    const snapshot = await getEdgeAICache();
+    for (const [stageId, done] of Object.entries(snapshot.pending)) {
+      await request(`/learning/edge-ai/${stageId}`, { method: 'PATCH', body: JSON.stringify({ done }) });
+    }
+    const remote = await request<EdgeAILearningProgress>('/learning/edge-ai');
+    const latest = await getEdgeAICache();
+    const pending = { ...latest.pending };
+    Object.keys(snapshot.pending).forEach((stageId) => delete pending[stageId]);
+    const completed = new Set(remote.completed);
+    Object.entries(pending).forEach(([stageId, done]) => done ? completed.add(stageId) : completed.delete(stageId));
+    const state = { completed: [...completed], pending, updated_at: remote.updated_at || localTimestamp() };
+    await saveEdgeAICache(state);
+    window.dispatchEvent(new CustomEvent('firefly:edge-ai-cache', { detail: state }));
+    return { completed: state.completed, updated_at: state.updated_at };
+  })().finally(() => { edgeAISync = null; });
+  edgeAISync.catch(() => undefined);
+  return edgeAISync;
 }
 
 export function getReflections() {

@@ -38,8 +38,14 @@ function TodoView({ onStartFocus }: { onStartFocus?: (title: string) => void }) 
     load(true);
     const timer = window.setInterval(() => load(), 12_000);
     const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    const useCache = (event: Event) => {
+      if (!mounted) return;
+      setItems((event as CustomEvent<{ todos: TodoItem[] }>).detail.todos);
+      setLoading(false);
+    };
     document.addEventListener('visibilitychange', onVisible);
-    return () => { mounted = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
+    window.addEventListener('firefly:productivity-cache', useCache);
+    return () => { mounted = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('firefly:productivity-cache', useCache); };
   }, []);
 
   const stats = useMemo(() => {
@@ -72,7 +78,7 @@ function TodoView({ onStartFocus }: { onStartFocus?: (title: string) => void }) 
     setSubmitting(true);
     try {
       const data = await createTodo({ title: cleanTitle, priority, due_date: dueDate || null, notes: notes.trim() }) as { item: TodoItem };
-      setItems((current) => [...current, data.item]);
+      setItems((current) => current.some((item) => item.id === data.item.id) ? current : [...current, data.item]);
       setTitle('');
       setDueDate('');
       setNotes('');

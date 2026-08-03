@@ -36,6 +36,12 @@ export default function EdgeAILearning() {
     }).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const useCache = (event: Event) => setCompleted((event as CustomEvent<{ completed:string[] }>).detail.completed);
+    window.addEventListener('firefly:edge-ai-cache', useCache);
+    return () => window.removeEventListener('firefly:edge-ai-cache', useCache);
+  }, []);
+
   const toggle = async (stage: Stage) => {
     const done = !completedSet.has(stage.id);
     setCompleted((current) => done ? [...current, stage.id] : current.filter((id) => id !== stage.id));

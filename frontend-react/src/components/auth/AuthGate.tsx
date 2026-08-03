@@ -3,29 +3,33 @@ import { getAuthStatus, login, logout } from '../../api/client';
 import './AuthGate.css';
 
 type AuthState = 'checking' | 'authenticated' | 'anonymous' | 'offline';
+const OFFLINE_AUTH_KEY = 'firefly:authenticated-device';
 
 export default function AuthGate({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>('checking');
+  const trustedOfflineDevice = () => window.localStorage.getItem(OFFLINE_AUTH_KEY) === 'true';
+  const [state, setState] = useState<AuthState>(() => trustedOfflineDevice() ? 'authenticated' : 'checking');
   const [authEnabled, setAuthEnabled] = useState(false);
   const [username, setUsername] = useState('firefly');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const checkSession = async () => {
-    setState('checking');
+  const checkSession = async (background = false) => {
+    if (!background) setState('checking');
     try {
       const status = await getAuthStatus();
       setAuthEnabled(status.enabled);
+      if (status.authenticated) window.localStorage.setItem(OFFLINE_AUTH_KEY, 'true');
       setState(status.authenticated ? 'authenticated' : 'anonymous');
     } catch {
-      setState('offline');
+      setState(trustedOfflineDevice() ? 'authenticated' : 'offline');
     }
   };
 
   useEffect(() => {
-    void checkSession();
+    void checkSession(trustedOfflineDevice());
     const handleUnauthorized = () => {
+      window.localStorage.removeItem(OFFLINE_AUTH_KEY);
       setAuthEnabled(true);
       setState('anonymous');
       setError('登录已失效，请重新登录');
@@ -40,6 +44,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     setError('');
     try {
       await login(username.trim(), password);
+      window.localStorage.setItem(OFFLINE_AUTH_KEY, 'true');
       setPassword('');
       setState('authenticated');
     } catch (loginError) {
@@ -51,6 +56,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   const handleLogout = async () => {
     await logout().catch(() => undefined);
+    window.localStorage.removeItem(OFFLINE_AUTH_KEY);
     setState('anonymous');
   };
 

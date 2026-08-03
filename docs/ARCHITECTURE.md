@@ -13,6 +13,21 @@ Electron 主窗口 ─┐
 QQ 官方机器人 / NapCat ──────────────── /chat
 ```
 
+生产环境以服务器为中心：FastAPI、业务数据和 NapCat/QQ 常驻服务器；手机直接打开 Web 应用，笔记本 Electron 保留主窗口与透明桌宠窗口并连接同一服务。
+
+### 离线数据流
+
+```text
+React UI → IndexedDB → 立即更新界面
+                    └→ 在线时 POST /sync/productivity → 服务器 data/
+Service Worker → 缓存应用外壳和静态资源
+```
+
+- 待办、日程使用 `updated_at` 与删除墓碑做双向合并。
+- Edge AI 阶段完成状态先写入本地 pending，再按阶段补交服务器。
+- 已成功登录的设备保存“可信设备”标记；断网时允许进入本地缓存，但不保存密码。
+- 对话、模型调用、占卜和 NapCat/QQ 不提供离线模拟。
+
 - `run_firefly.py` 是统一启动器：选择当前系统的 Node 依赖、清理旧进程、启动后端、桌面端以及可选的蒲公英手机入口。
 - Electron 开发窗口加载 `http://localhost:5173`；手机入口使用 `web` mode 和 `5174` 端口。
 - 两个 Vite 实例必须使用不同缓存目录，配置在 `frontend-react/vite.config.ts`，否则会出现 `504 Outdated Optimize Dep` 白屏。
