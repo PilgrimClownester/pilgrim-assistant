@@ -8,7 +8,6 @@ const OFFLINE_AUTH_KEY = 'firefly:authenticated-device';
 export default function AuthGate({ children }: { children: ReactNode }) {
   const trustedOfflineDevice = () => window.localStorage.getItem(OFFLINE_AUTH_KEY) === 'true';
   const [state, setState] = useState<AuthState>(() => trustedOfflineDevice() ? 'authenticated' : 'checking');
-  const [authEnabled, setAuthEnabled] = useState(false);
   const [username, setUsername] = useState('firefly');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,7 +17,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     if (!background) setState('checking');
     try {
       const status = await getAuthStatus();
-      setAuthEnabled(status.enabled);
       if (status.authenticated) window.localStorage.setItem(OFFLINE_AUTH_KEY, 'true');
       setState(status.authenticated ? 'authenticated' : 'anonymous');
     } catch {
@@ -30,13 +28,11 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     void checkSession(trustedOfflineDevice());
     const handleUnauthorized = () => {
       window.localStorage.removeItem(OFFLINE_AUTH_KEY);
-      setAuthEnabled(true);
       setState('anonymous');
       setError('登录已失效，请重新登录');
     };
     const handleLoggedOut = () => {
       window.localStorage.removeItem(OFFLINE_AUTH_KEY);
-      setAuthEnabled(true);
       setState('anonymous');
     };
     window.addEventListener('firefly:unauthorized', handleUnauthorized);
