@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from backend.auth import (
@@ -71,7 +71,6 @@ from backend.growth import (
     save_mood,
     toggle_milestone,
 )
-from backend.music import stream_ambient_music
 from backend.profile import UserProfile, build_profile_context, get_profile, save_profile
 from backend.productivity import (
     ScheduleCreate,
@@ -322,11 +321,6 @@ def root() -> dict[str, str]:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
-
-
-@app.get("/music/ambient")
-def ambient_music(request: Request) -> StreamingResponse:
-    return stream_ambient_music(request.headers.get("range"))
 
 
 @app.get("/qq/napcat")

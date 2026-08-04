@@ -19,7 +19,6 @@ import InboxView from './components/inbox/InboxView';
 import ProjectsView from './components/projects/ProjectsView';
 import WeeklyReviewView from './components/review/WeeklyReviewView';
 import NetworkStatus from './components/shared/NetworkStatus';
-import AmbientMusicPlayer from './components/music/AmbientMusicPlayer';
 import type { PageId } from './types';
 import './App.css';
 import './styles/mobile.css';
@@ -93,7 +92,6 @@ function App() {
           {renderPage()}
         </div>
       </MainLayout>
-      <AmbientMusicPlayer />
       <ReminderWatcher />
       <NetworkStatus />
       <FocusOverlay task={focusTarget} onClose={() => setFocusTarget(null)} />
