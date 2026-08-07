@@ -34,11 +34,21 @@ class ReflectionItem(ReflectionCreate):
 class MemoryCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=240)
     category: Literal["preference", "goal", "context", "boundary"] = "context"
+    use_in_chat: bool = True
+
+
+class MemoryUpdate(BaseModel):
+    content: Optional[str] = Field(default=None, min_length=1, max_length=240)
+    category: Optional[Literal["preference", "goal", "context", "boundary"]] = None
+    use_in_chat: Optional[bool] = None
+    is_frozen: Optional[bool] = None
 
 
 class MemoryItem(MemoryCreate):
     id: str
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
+    is_frozen: bool = False
 
 
 class FocusSessionCreate(BaseModel):
@@ -102,6 +112,22 @@ def create_memory(value: MemoryCreate) -> MemoryItem:
         return result
 
 
+def update_memory(memory_id: str, value: MemoryUpdate) -> MemoryItem | None:
+    with _DATA_LOCK:
+        items = _read_list(MEMORIES_PATH)
+        updates = value.model_dump(exclude_unset=True, exclude_none=True)
+        for item in items:
+            if item.get("id") != memory_id:
+                continue
+            item.update(updates)
+            item["updated_at"] = datetime.now().isoformat(timespec="seconds")
+            result = MemoryItem(**item)
+            item.update(result.model_dump())
+            _write_list(MEMORIES_PATH, items)
+            return result
+    return None
+
+
 def delete_memory(memory_id: str) -> bool:
     with _DATA_LOCK:
         items = _read_list(MEMORIES_PATH)
@@ -113,9 +139,9 @@ def delete_memory(memory_id: str) -> bool:
 
 
 def build_memory_context(max_items: int = 12) -> str:
-    items = list_memories()[:max_items]
+    items = [item for item in list_memories() if item.use_in_chat and not item.is_frozen][:max_items]
     if not items:
-        return "用户没有要求长期记住的额外信息。"
+        return "用户没有允许进入对话上下文的长期记忆。"
     labels = {"preference": "偏好", "goal": "长期目标", "context": "背景", "boundary": "边界"}
     return "用户主动保存的长期记忆：\n" + "\n".join(f"- [{labels[item.category]}] {item.content}" for item in items)
 

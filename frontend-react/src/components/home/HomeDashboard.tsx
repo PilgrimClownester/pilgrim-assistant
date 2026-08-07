@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { createTodo, getProfile, getSavedDailyFortune, getSchedule, getTodos, getWeeklySummary, saveReflection } from '../../api/client';
+import { createTodo, getDailyBrief, getProfile, getSavedDailyFortune, getSchedule, getTodos, getWeeklySummary, saveReflection } from '../../api/client';
 import type { DailyFortuneResult } from '../../api/client';
-import type { ReflectionItem, ScheduleEvent, TodoItem, UserProfile, WeeklySummary } from '../../types';
+import type { DailyBrief, DailyBriefTarget, ReflectionItem, ScheduleEvent, TodoItem, UserProfile, WeeklySummary } from '../../types';
 import AppIcon from '../shared/AppIcon';
 import './HomeDashboard.css';
 
-type HomeTarget = 'chat' | 'inbox' | 'projects' | 'review' | 'todo' | 'schedule' | 'tools';
+type HomeTarget = 'chat' | 'inbox' | 'projects' | 'review' | 'todo' | 'schedule' | 'growth' | 'tools';
 
 function localToday() {
   const now = new Date();
@@ -21,6 +21,7 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [schedule, setSchedule] = useState<ScheduleEvent[]>([]);
   const [daily, setDaily] = useState<DailyFortuneResult | null>(null);
+  const [brief, setBrief] = useState<DailyBrief | null>(null);
   const [weekly, setWeekly] = useState<WeeklySummary | null>(null);
   const [reviewOpen, setReviewOpen] = useState(() => new Date().getHours() >= 18);
   const [review, setReview] = useState({ win: '', challenge: '', tomorrow: '', mood: 'steady' as ReflectionItem['mood'] });
@@ -28,6 +29,12 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
   const [addTomorrowTodo, setAddTomorrowTodo] = useState(true);
   const [reminders, setReminders] = useState(() => window.localStorage.getItem('firefly:reminders-enabled') === 'true');
   const [loading, setLoading] = useState(true);
+
+  const loadBrief = () => {
+    const now = new Date();
+    return getDailyBrief(localToday(), now.getHours(), now.getMinutes())
+      .then((data) => setBrief(data as DailyBrief));
+  };
 
   const load = async () => {
     const [todoData, scheduleData] = await Promise.allSettled([getTodos(), getSchedule()]);
@@ -37,6 +44,7 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
     void getProfile().then((data) => setProfile(data as UserProfile)).catch(() => {});
     void getSavedDailyFortune().then((data) => setDaily(data.result)).catch(() => {});
     void getWeeklySummary().then((data) => setWeekly(data as WeeklySummary)).catch(() => {});
+    void loadBrief().catch(() => {});
   };
 
   useEffect(() => { load().catch(() => setLoading(false)); }, []);
@@ -46,6 +54,7 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
       const detail = (event as CustomEvent<{ todos: TodoItem[]; schedule: ScheduleEvent[] }>).detail;
       setTodos(detail.todos);
       setSchedule(detail.schedule);
+      void loadBrief().catch(() => {});
     };
     window.addEventListener('firefly:productivity-cache', useCache);
     return () => window.removeEventListener('firefly:productivity-cache', useCache);
@@ -68,7 +77,7 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
     const todayActiveTodos = todayTodos.filter((item) => !item.done);
     const total = todayEvents.length + todayTodos.length;
     const done = todayEvents.filter((item) => item.done).length + todayTodos.filter((item) => item.done).length;
-    return { active, lead: active[0], todayEvents, todayTodos, todayActiveTodos, next, overdue, total, done, progress: total ? Math.round(done / total * 100) : 0 };
+    return { active, todayEvents, todayTodos, todayActiveTodos, next, overdue, total, done, progress: total ? Math.round(done / total * 100) : 0 };
   }, [schedule, today, todos]);
 
   const seed = daily?.seed;
@@ -98,6 +107,15 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
     setReviewSaved(true);
     setTimeout(() => setReviewSaved(false), 2200);
     getWeeklySummary().then((data) => setWeekly(data as WeeklySummary)).catch(() => {});
+    void loadBrief().catch(() => {});
+  };
+
+  const openBriefTarget = (target: DailyBriefTarget) => {
+    if (target !== 'home') onNavigate(target);
+    else {
+      setReviewOpen(true);
+      window.requestAnimationFrame(() => document.querySelector('.home-review-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    }
   };
 
   if (loading) return <div className="home-loading">正在把今天整理好…</div>;
@@ -128,12 +146,15 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
 
       <section className="home-hero-grid">
         <article className="home-mainline-card">
-          <div className="home-mainline-top"><span>今日主线</span><small>{view.lead?.priority === 'high' ? '重要任务' : '从一件事开始'}</small></div>
-          <div className="home-mainline-copy">
-            <span className="home-mainline-mark">{view.lead ? '01' : '✓'}</span>
-            <div><h3>{view.lead?.title || '今天没有未完成任务'}</h3><p>{view.lead?.notes || (view.lead?.due_date ? `截止 ${view.lead.due_date}` : '先选择一件真正值得投入注意力的事。')}</p></div>
+          <div className="home-mainline-top"><span>今日萤火</span><small>{brief ? `${periodLabel(brief.period)} · 私密整理` : '正在整理'}</small></div>
+          <div className="home-brief-copy">
+            <span className="home-mainline-mark">✦</span>
+            <div><h3>{brief?.title || '把今天照亮一点'}</h3><p>{brief?.summary || 'Firefly 正在从你的日程与记录中整理今天。'}</p></div>
           </div>
-          <div className="home-mainline-actions"><button onClick={() => view.lead ? onStartFocus(view.lead.title) : onNavigate('todo')} className="is-primary">{view.lead ? '开始专注' : '添加任务'}<b>→</b></button><button onClick={() => onNavigate('todo')}>查看清单</button></div>
+          {brief?.lead && <div className="home-brief-lead"><small>此刻主线</small><strong>{brief.lead.title}</strong><p>{brief.lead.detail}</p></div>}
+          {!!brief?.signals.length && <div className="home-brief-signals">{brief.signals.map((signal) => <button key={`${signal.kind}-${signal.title}`} className={`is-${signal.tone}`} onClick={() => openBriefTarget(signal.target)}><span>{signal.title}</span><small>{signal.detail}</small></button>)}</div>}
+          {brief?.memory_echo && <div className="home-memory-echo"><span>来自长期记忆</span><p>{brief.memory_echo.content}</p></div>}
+          <div className="home-mainline-actions"><button onClick={() => brief?.lead ? (brief.lead.source === 'todo' ? onStartFocus(brief.lead.title) : onNavigate('schedule')) : onNavigate('todo')} className="is-primary">{brief?.lead ? (brief.lead.source === 'todo' ? '开始专注' : '查看日程') : '添加任务'}<b>→</b></button><button onClick={() => onNavigate('chat')}>和流萤聊聊</button></div>
         </article>
 
         <button className="home-fortune-card" onClick={() => onNavigate('tools')}>
@@ -211,6 +232,7 @@ function translateDailyKeyword(value: unknown) {
   };
   return translations[String(value || '')] || '今日提示';
 }
+function periodLabel(period: DailyBrief['period']) { return { morning: '晨间', afternoon: '午后', evening: '晚间' }[period]; }
 function getWeeklyNote(weekly: WeeklySummary | null) { if (!weekly) return '从今天开始，留下属于自己的节奏。'; if (weekly.focus_minutes >= 180) return '这一周投入得很扎实，也别忘了给恢复留时间。'; if (weekly.completed >= 5) return '你已经推动了不少事情，下一步是守住稳定节奏。'; return '不用追赶数字，先让每一天都有一个真实的小进展。'; }
 function shiftLocalDate(value: string, days: number) { const date = new Date(`${value}T12:00:00`); date.setDate(date.getDate() + days); return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-'); }
 

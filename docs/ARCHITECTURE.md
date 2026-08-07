@@ -40,6 +40,7 @@ Service Worker → 缓存应用外壳和静态资源
 | `backend/main.py` | HTTP 路由、请求模型编排、聊天工具调度 | 无直接所有权 |
 | `backend/productivity.py` | 待办、日程、同步墓碑 | `productivity.json` |
 | `backend/companion.py` | 日复盘、长期记忆、专注记录 | 三个 JSON 文件 |
+| `backend/daily_brief.py` | 聚合现有领域数据，生成不调用模型的早/午/晚摘要 | 无直接所有权 |
 | `backend/growth.py` | 心情、支出、习惯、目标、灵感 | `growth.db` |
 | `backend/workspace.py` | 万能收件箱、项目驾驶舱、周复盘 | `workspace.db`，并关联其他模块 |
 | `backend/treehole.py` | AES-GCM 加密时间胶囊、尝试限流 | `data/treehole/` |
@@ -92,4 +93,6 @@ Project
 
 ## 6. 聊天上下文
 
-`POST /chat` 会组合人格、个人档案、长期记忆、任务/日程、成长数据和项目摘要。新增上下文时要限制条数和长度，避免把完整数据库拼进 prompt；树洞内容永远不能进入该链路。
+`POST /chat` 会组合人格、个人档案、允许用于对话且未冻结的长期记忆、任务/日程、成长数据和项目摘要。新增上下文时要限制条数和长度，避免把完整数据库拼进 prompt；树洞内容、`use_in_chat=false` 的记忆和冻结记忆永远不能进入该链路。
+
+“今日萤火”与聊天上下文是两条独立链路：前者只在 Firefly 后端用确定性规则读取聚合数据，不调用外部模型。关闭“用于对话”的活动记忆仍可作为每日记忆回声出现；冻结记忆在两条链路中都暂停使用。

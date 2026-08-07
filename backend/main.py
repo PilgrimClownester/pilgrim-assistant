@@ -3,7 +3,7 @@ import json
 import re
 from datetime import date, datetime, timedelta
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -28,6 +28,7 @@ from backend.config import DEEPSEEK_FLASH_MODEL
 from backend.companion import (
     FocusSessionCreate,
     MemoryCreate,
+    MemoryUpdate,
     ReflectionCreate,
     build_memory_context,
     create_focus_session,
@@ -37,8 +38,10 @@ from backend.companion import (
     list_memories,
     list_reflections,
     save_reflection,
+    update_memory,
     weekly_summary,
 )
+from backend.daily_brief import build_daily_brief
 from backend.deepseek_client import ask_deepseek
 from backend.edge_ai_learning import EdgeAIStagePatch, EdgeAITaskPatch, get_edge_ai_progress, set_edge_ai_stage, set_edge_ai_task
 from backend.fortune.daily import (
@@ -472,11 +475,31 @@ def add_memory(item: MemoryCreate) -> dict[str, object]:
     return {"item": create_memory(item)}
 
 
+@app.patch("/companion/memories/{memory_id}")
+def patch_memory(memory_id: str, item: MemoryUpdate) -> dict[str, object]:
+    updated = update_memory(memory_id, item)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    return {"item": updated}
+
+
 @app.delete("/companion/memories/{memory_id}")
 def remove_memory(memory_id: str) -> dict[str, object]:
     if not delete_memory(memory_id):
         raise HTTPException(status_code=404, detail="Memory not found")
     return {"ok": True}
+
+
+@app.get("/companion/today")
+def read_daily_brief(
+    day: str | None = None,
+    hour: int | None = Query(default=None, ge=0, le=23),
+    minute: int | None = Query(default=None, ge=0, le=59),
+) -> dict[str, object]:
+    try:
+        return build_daily_brief(day=day, hour=hour, minute=minute)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail="Invalid date") from error
 
 
 @app.get("/companion/focus")

@@ -425,8 +425,17 @@ export function createMemory(memory: unknown) {
   return request('/companion/memories', { method: 'POST', body: JSON.stringify(memory) });
 }
 
+export function updateMemory(id: string, memory: unknown) {
+  return request(`/companion/memories/${id}`, { method: 'PATCH', body: JSON.stringify(memory) });
+}
+
 export function deleteMemory(id: string) {
   return request(`/companion/memories/${id}`, { method: 'DELETE' });
+}
+
+export function getDailyBrief(date: string, hour: number, minute: number) {
+  const query = new URLSearchParams({ day: date, hour: String(hour), minute: String(minute) });
+  return request(`/companion/today?${query.toString()}`);
 }
 
 export function getFocusSessions() {

@@ -93,7 +93,8 @@
 | --- | --- | --- |
 | GET/POST | `/companion/reflections` | 日复盘 |
 | GET/POST | `/companion/memories` | 可见长期记忆 |
-| DELETE | `/companion/memories/{memory_id}` | 删除长期记忆 |
+| PATCH/DELETE | `/companion/memories/{memory_id}` | 编辑、冻结、切换对话使用状态/删除长期记忆 |
+| GET | `/companion/today` | 本地规则生成的“今日萤火”摘要 |
 | GET/POST | `/companion/focus` | 专注记录 |
 | GET | `/companion/weekly` | 首页七日摘要 |
 | GET | `/treehole/status` | 只返回胶囊元数据 |
@@ -102,6 +103,10 @@
 | POST | `/chat` | Firefly 主对话 |
 | GET | `/chat/archive` | 对话归档 |
 | GET | `/chat/archive/export` | 导出归档 |
+
+长期记忆的 `use_in_chat=false` 表示内容仍保存在 Firefly 数据中，但不会被拼入模型上下文；`is_frozen=true` 表示暂停使用，同样不会进入上下文或今日记忆回声。旧数据缺少这些字段时默认保持启用，以兼容已有记忆。
+
+`GET /companion/today` 接受可选的 `day=YYYY-MM-DD`、`hour=0..23` 和 `minute=0..59`。浏览器会传入设备本地时间，避免云服务器时区影响晨间/晚间判断。摘要只在 Firefly 后端读取待办、日程、项目、习惯、心情、复盘和记忆并按确定性规则生成，不调用外部模型。
 
 ## 运势工具
 

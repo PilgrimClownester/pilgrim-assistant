@@ -153,7 +153,40 @@ export interface CompanionMemory {
   id: string;
   content: string;
   category: 'preference' | 'goal' | 'context' | 'boundary';
+  use_in_chat: boolean;
+  is_frozen: boolean;
   created_at: string;
+  updated_at: string;
+}
+
+export type DailyBriefTarget = 'home' | 'todo' | 'schedule' | 'projects' | 'growth';
+
+export interface DailyBriefSignal {
+  kind: string;
+  tone: 'warning' | 'attention' | 'calm' | 'gentle';
+  title: string;
+  detail: string;
+  target: DailyBriefTarget;
+}
+
+export interface DailyBrief {
+  date: string;
+  period: 'morning' | 'afternoon' | 'evening';
+  title: string;
+  summary: string;
+  nickname: string;
+  lead: null | {
+    title: string;
+    detail: string;
+    source: 'todo' | 'schedule';
+    target: 'todo' | 'schedule';
+    item_id: string;
+  };
+  signals: DailyBriefSignal[];
+  memory_echo: null | Pick<CompanionMemory, 'id' | 'content' | 'category'>;
+  stats: { completed: number; pending: number; overdue: number; events: number };
+  generated_at: string;
+  private_processing: boolean;
 }
 
 export interface FocusSession {

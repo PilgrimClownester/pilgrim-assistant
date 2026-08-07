@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import FrostedCard from '../shared/FrostedCard';
-import { createMemory, deleteMemory, exportChatArchive, getMemories, getNapcatStatus, getProfile, logout, postBaziChart, saveProfile, startNapcat, stopNapcat } from '../../api/client';
+import { createMemory, deleteMemory, exportChatArchive, getMemories, getNapcatStatus, getProfile, logout, postBaziChart, saveProfile, startNapcat, stopNapcat, updateMemory } from '../../api/client';
 import type { BirthInfo, CompanionMemory, UserProfile } from '../../types';
 import BaziChartView from './BaziChartView';
 import './SettingsView.css';
@@ -39,6 +39,10 @@ function SettingsView() {
   const [memories, setMemories] = useState<CompanionMemory[]>([]);
   const [memoryText, setMemoryText] = useState('');
   const [memoryCategory, setMemoryCategory] = useState<CompanionMemory['category']>('context');
+  const [memoryUseInChat, setMemoryUseInChat] = useState(true);
+  const [editingMemoryId, setEditingMemoryId] = useState<string | null>(null);
+  const [memoryDraft, setMemoryDraft] = useState('');
+  const [memoryDraftCategory, setMemoryDraftCategory] = useState<CompanionMemory['category']>('context');
   const [memoryError, setMemoryError] = useState('');
   const [archiveStatus, setArchiveStatus] = useState('');
 
@@ -118,14 +122,42 @@ function SettingsView() {
     const content = memoryText.trim();
     if (!content) return;
     try {
-      const data = await createMemory({ content, category: memoryCategory }) as { item: CompanionMemory };
+      const data = await createMemory({ content, category: memoryCategory, use_in_chat: memoryUseInChat }) as { item: CompanionMemory };
       setMemories((current) => [data.item, ...current]);
       setMemoryText('');
       setMemoryError('');
     } catch (error) { setMemoryError(error instanceof Error ? error.message : '添加失败'); }
   };
 
+  const changeMemory = async (id: string, patch: Partial<Pick<CompanionMemory, 'content' | 'category' | 'use_in_chat' | 'is_frozen'>>) => {
+    try {
+      const data = await updateMemory(id, patch) as { item: CompanionMemory };
+      setMemories((current) => current.map((item) => item.id === id ? data.item : item));
+      setMemoryError('');
+      return data.item;
+    } catch (error) {
+      setMemoryError(error instanceof Error ? error.message : '更新失败');
+      return null;
+    }
+  };
+
+  const beginMemoryEdit = (item: CompanionMemory) => {
+    setEditingMemoryId(item.id);
+    setMemoryDraft(item.content);
+    setMemoryDraftCategory(item.category);
+  };
+
+  const saveMemoryEdit = async (item: CompanionMemory) => {
+    const content = memoryDraft.trim();
+    if (!content) return;
+    if (await changeMemory(item.id, { content, category: memoryDraftCategory })) {
+      setEditingMemoryId(null);
+      setMemoryDraft('');
+    }
+  };
+
   const removeMemory = async (id: string) => {
+    if (!window.confirm('确定删除这条长期记忆吗？删除后无法从界面恢复。')) return;
     try {
       await deleteMemory(id);
       setMemories((current) => current.filter((item) => item.id !== id));
@@ -251,8 +283,8 @@ function SettingsView() {
 
         <FrostedCard className="settings-memory" style={{ padding: 22 }}>
           <div className="settings-memory-heading">
-            <div><span>VISIBLE MEMORY</span><h3>流萤记住的事</h3><p>只有这里的内容会作为长期记忆进入对话，你可以随时逐条删除。</p></div>
-            <em>{memories.length} 条</em>
+            <div><span>FIREFLY SEES ME</span><h3>Firefly 眼中的我</h3><p>你始终可以看见并控制每一条记忆。关闭“用于对话”后，它仍保存在你的 Firefly 数据中，但不会进入模型上下文。</p></div>
+            <em>{memories.filter((item) => !item.is_frozen).length} 条启用 · {memories.filter((item) => item.use_in_chat && !item.is_frozen).length} 条用于对话</em>
           </div>
           <div className="settings-memory-compose">
             <select value={memoryCategory} onChange={(event) => setMemoryCategory(event.target.value as CompanionMemory['category'])}>
@@ -260,10 +292,22 @@ function SettingsView() {
             </select>
             <input value={memoryText} onChange={(event) => setMemoryText(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') addMemory(); }} placeholder="例如：我不喜欢太正式的回复" maxLength={240} />
             <button onClick={addMemory} disabled={!memoryText.trim()}>记住</button>
+            <label className="settings-memory-context-option"><input type="checkbox" checked={memoryUseInChat} onChange={(event) => setMemoryUseInChat(event.target.checked)} /><span>允许这条记忆进入对话上下文</span></label>
           </div>
           {memoryError && <p className="settings-memory-error">{memoryError}</p>}
           <div className="settings-memory-list">
-            {memories.map((item) => <article key={item.id}><span>{memoryLabel(item.category)}</span><p>{item.content}</p><button onClick={() => removeMemory(item.id)} aria-label={`删除记忆 ${item.content}`}>×</button></article>)}
+            {memories.map((item) => <article key={item.id} className={item.is_frozen ? 'is-frozen' : ''}>
+              <div className="settings-memory-item-main">
+                <div className="settings-memory-item-meta"><span>{memoryLabel(item.category)}</span><em>{item.is_frozen ? '已冻结' : item.use_in_chat ? '用于对话' : '不进入对话'}</em></div>
+                {editingMemoryId === item.id ? <div className="settings-memory-editor"><select value={memoryDraftCategory} onChange={(event) => setMemoryDraftCategory(event.target.value as CompanionMemory['category'])}><option value="preference">偏好</option><option value="goal">长期目标</option><option value="context">背景</option><option value="boundary">边界</option></select><textarea value={memoryDraft} onChange={(event) => setMemoryDraft(event.target.value)} maxLength={240} autoFocus /></div> : <p>{item.content}</p>}
+              </div>
+              <div className="settings-memory-item-controls">
+                {editingMemoryId === item.id ? <><button className="is-primary" onClick={() => saveMemoryEdit(item)} disabled={!memoryDraft.trim()}>保存</button><button onClick={() => setEditingMemoryId(null)}>取消</button></> : <button onClick={() => beginMemoryEdit(item)}>编辑</button>}
+                <button onClick={() => changeMemory(item.id, { use_in_chat: !item.use_in_chat })} disabled={item.is_frozen}>{item.use_in_chat ? '退出对话' : '用于对话'}</button>
+                <button onClick={() => changeMemory(item.id, { is_frozen: !item.is_frozen })}>{item.is_frozen ? '重新启用' : '冻结'}</button>
+                <button className="is-danger" onClick={() => removeMemory(item.id)}>删除</button>
+              </div>
+            </article>)}
             {!memories.length && <div className="settings-memory-empty">还没有长期记忆。只有你主动添加的内容才会出现在这里。</div>}
           </div>
         </FrostedCard>

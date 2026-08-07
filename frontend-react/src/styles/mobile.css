@@ -591,27 +591,44 @@
   }
 
   .home-hero-grid {
-    display: none;
+    display: block;
+    order: 2;
+    margin-bottom: 10px;
   }
+
+  .home-hero-grid .home-fortune-card { display: none; }
+
+  .home-mainline-card {
+    min-height: 0;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .home-brief-copy { padding: 11px 0 8px; }
+  .home-brief-copy .home-mainline-mark { width: 39px; height: 39px; border-radius: 13px; }
+  .home-brief-copy h3 { font-size: 0.9rem; }
+  .home-brief-copy p { font-size: 0.62rem; }
+  .home-brief-signals button { min-width: 150px; }
+  .home-mainline-card .home-mainline-actions { margin-top: 9px; }
 
   .home-flow-grid {
-    order: 2;
-  }
-
-  .home-today-metrics {
     order: 3;
   }
 
-  .home-insight-grid {
-    order: 5;
-  }
-
-  .home-focus-launcher {
+  .home-today-metrics {
     order: 4;
   }
 
-  .home-chat-entry {
+  .home-insight-grid {
     order: 6;
+  }
+
+  .home-focus-launcher {
+    order: 5;
+  }
+
+  .home-chat-entry {
+    order: 7;
   }
 
   .home-flow-grid {
