@@ -159,6 +159,35 @@ export interface CompanionMemory {
   updated_at: string;
 }
 
+export type LearningCategory = CompanionMemory['category'];
+export type LearningStatus = 'pending' | 'confirmed' | 'rejected';
+export interface LearningCandidate {
+  id: string;
+  content: string;
+  category: LearningCategory;
+  reason: string;
+  evidence: string;
+  confidence: number;
+  source_type: 'chat_observation' | 'explicit_remember' | 'reply_feedback';
+  use_in_chat: boolean;
+  status: LearningStatus;
+  occurrence_count: number;
+  memory_id: string | null;
+  created_at: string;
+  updated_at: string;
+  decided_at: string | null;
+}
+
+export interface LearningWeeklySummary {
+  start: string;
+  end: string;
+  generated: number;
+  confirmed: number;
+  rejected: number;
+  pending: number;
+  learned: Pick<LearningCandidate, 'id' | 'content' | 'category' | 'memory_id'>[];
+}
+
 export type DailyBriefTarget = 'home' | 'todo' | 'schedule' | 'projects' | 'growth';
 
 export interface DailyBriefSignal {

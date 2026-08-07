@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getHealth } from '../../api/client';
+import { getHealth, getLearningCandidates } from '../../api/client';
 import type { PageId } from '../../types';
 import AppIcon from '../shared/AppIcon';
 import './Sidebar.css';
@@ -80,6 +80,7 @@ const mobileMoreItems: NavSection['items'] = [
 function Sidebar({ activePage, onNavigate }: SidebarProps) {
   const [backendOnline, setBackendOnline] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const [learningPending, setLearningPending] = useState(0);
 
   useEffect(() => {
     const check = async () => {
@@ -93,6 +94,20 @@ function Sidebar({ activePage, onNavigate }: SidebarProps) {
     check();
     const interval = setInterval(check, 15000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const checkLearning = () => getLearningCandidates('pending', 100)
+      .then((result) => setLearningPending((result as { items: unknown[] }).items.length))
+      .catch(() => undefined);
+    const handleUpdate = () => { void checkLearning(); };
+    void checkLearning();
+    const interval = window.setInterval(checkLearning, 30000);
+    window.addEventListener('firefly:learning-updated', handleUpdate);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('firefly:learning-updated', handleUpdate);
+    };
   }, []);
 
   const navigate = (page: PageId) => {
@@ -127,6 +142,7 @@ function Sidebar({ activePage, onNavigate }: SidebarProps) {
                 <span className="nav-item-icon"><AppIcon name={item.id} /></span>
                 <span className="nav-item-label">{item.label}</span>
                 <span className="nav-item-mobile-label">{item.mobileLabel}</span>
+                {item.id === 'inbox' && learningPending > 0 && <span className="nav-pending-count" aria-label={`${learningPending} 条学习候选`}>{Math.min(learningPending, 99)}</span>}
               </button>
             ))}
           </div>
@@ -155,6 +171,7 @@ function Sidebar({ activePage, onNavigate }: SidebarProps) {
         >
           <span className="nav-item-icon"><span className="nav-more-dots" aria-hidden="true"><i /><i /><i /></span></span>
           <span className="nav-item-mobile-label">更多</span>
+          {learningPending > 0 && <span className="nav-pending-dot" aria-label={`${learningPending} 条学习候选`} />}
         </button>
       </nav>
 
@@ -172,6 +189,7 @@ function Sidebar({ activePage, onNavigate }: SidebarProps) {
                 >
                   <span className="nav-item-icon"><AppIcon name={item.id} /></span>
                   <span>{item.mobileLabel}</span>
+                  {item.id === 'inbox' && learningPending > 0 && <span className="mobile-more-count">{Math.min(learningPending, 99)}</span>}
                 </button>
               ))}
             </div>

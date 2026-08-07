@@ -44,6 +44,21 @@
 
 `kind` 可为 `todo`、`schedule`、`expense`、`habit`、`goal`、`idea`、`project` 或 `treehole`。树洞提交额外需要密码和解锁日期。
 
+### 学习确认箱
+
+学习候选显示在万能收件箱顶部，与普通收纳共享“先预览、后确认”的原则。
+
+| 方法 | 路径 | 用途 |
+| --- | --- | --- |
+| GET | `/learning/candidates?status=pending` | 读取待确认候选；`status` 也可为 `confirmed`、`rejected` 或 `all` |
+| POST | `/learning/feedback` | 对话中的“记住”“简短些”“理解错了”反馈，只生成候选 |
+| POST | `/learning/candidates/{candidate_id}/confirm` | 可在请求体修订内容、分类和 `use_in_chat`，确认后写入长期记忆 |
+| POST | `/learning/candidates/{candidate_id}/reject` | 忽略候选并保留审计状态 |
+| GET/PATCH | `/learning/preferences` | 读取或暂停从普通对话自动发现候选 |
+| GET | `/learning/weekly` | 本周发现、确认、忽略与待处理数量 |
+
+自动发现采用本地高置信规则，不额外调用模型；只识别用户明确表达的稳定偏好、交流边界和长期目标。密码、令牌、联系方式、树洞及运势内容不会保存为候选。暂停自动发现不影响用户主动点击“记住”。候选在确认前不会进入 `/companion/memories`，也不会拼入聊天 prompt。
+
 ## 项目驾驶舱
 
 | 方法 | 路径 | 用途 |

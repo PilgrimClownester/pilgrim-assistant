@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 import backend.companion as companion
 import backend.growth as growth
 import backend.main as main
+import backend.learning as learning
 import backend.productivity as productivity
 import backend.profile as profile
 import backend.treehole as treehole
@@ -34,6 +35,7 @@ class IsolatedDataTestCase(unittest.TestCase):
             (companion, "REFLECTIONS_PATH"): companion.REFLECTIONS_PATH,
             (companion, "MEMORIES_PATH"): companion.MEMORIES_PATH,
             (companion, "FOCUS_PATH"): companion.FOCUS_PATH,
+            (learning, "LEARNING_PATH"): learning.LEARNING_PATH,
         }
         productivity.PRODUCTIVITY_PATH = self.root / "productivity.json"
         growth.DATA_PATH = self.root / "growth.json"
@@ -44,6 +46,7 @@ class IsolatedDataTestCase(unittest.TestCase):
         companion.REFLECTIONS_PATH = self.root / "reflections.json"
         companion.MEMORIES_PATH = self.root / "memories.json"
         companion.FOCUS_PATH = self.root / "focus.json"
+        learning.LEARNING_PATH = self.root / "learning.json"
         self.client = TestClient(main.app)
 
     def tearDown(self) -> None:
@@ -114,6 +117,49 @@ class WorkspaceApiTests(IsolatedDataTestCase):
         self.assertEqual(brief["memory_echo"]["content"], "先照顾好自己的节奏")
         self.assertTrue(brief["private_processing"])
         self.assertEqual(self.client.get("/companion/today?day=not-a-date").status_code, 400)
+
+    def test_controlled_learning_requires_inbox_confirmation(self) -> None:
+        candidate = learning.observe_user_message("我喜欢回复简洁一点")
+        self.assertIsNotNone(candidate)
+        assert candidate is not None
+        self.assertEqual(candidate.status, "pending")
+        self.assertEqual(companion.list_memories(), [])
+        self.assertNotIn("回复简洁", companion.build_memory_context())
+
+        pending = self.client.get("/learning/candidates?status=pending").json()["items"]
+        self.assertEqual(len(pending), 1)
+        confirmed = self.client.post(
+            f"/learning/candidates/{candidate.id}/confirm",
+            json={"content": "我希望 Firefly 回复简洁、直接。", "category": "preference", "use_in_chat": True},
+        )
+        self.assertEqual(confirmed.status_code, 200)
+        self.assertEqual(confirmed.json()["item"]["status"], "confirmed")
+        self.assertIn("回复简洁、直接", companion.build_memory_context())
+        self.assertEqual(self.client.get("/learning/candidates?status=pending").json()["items"], [])
+
+    def test_learning_feedback_safety_pause_and_rejection(self) -> None:
+        self.assertIsNone(learning.observe_user_message("我喜欢使用密码：secret-123456"))
+        self.assertIsNone(learning.observe_user_message("以后可能会移动到别的服务器"))
+        self.assertIsNone(learning.observe_user_message("我喜欢塔罗占卜"))
+        self.assertEqual(self.client.get("/learning/candidates").json()["items"], [])
+        self.assertEqual(
+            self.client.post("/learning/feedback", json={"kind": "remember", "content": "邮箱 pilgrim@example.com"}).status_code,
+            400,
+        )
+
+        feedback = self.client.post("/learning/feedback", json={"kind": "too_long"})
+        self.assertEqual(feedback.status_code, 200)
+        candidate_id = feedback.json()["item"]["id"]
+        rejected = self.client.post(f"/learning/candidates/{candidate_id}/reject")
+        self.assertEqual(rejected.status_code, 200)
+        self.assertEqual(rejected.json()["item"]["status"], "rejected")
+
+        paused = self.client.patch("/learning/preferences", json={"enabled": False}).json()["preferences"]
+        self.assertFalse(paused["enabled"])
+        self.assertIsNone(learning.observe_user_message("我的长期目标是完成毕业设计"))
+        summary = self.client.get("/learning/weekly").json()
+        self.assertEqual(summary["rejected"], 1)
+        self.assertEqual(summary["pending"], 0)
 
     def test_offline_inbox_examples(self) -> None:
         cases = {

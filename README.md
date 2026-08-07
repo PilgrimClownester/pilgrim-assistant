@@ -124,6 +124,7 @@ NAPCAT_ALLOWED_QQ=449140441
 - 默认进入首页工作台，Firefly 是通用个人助手，八字只是工具能力之一。
 - 今日萤火：根据设备本地时间，以不调用外部模型的规则聚合待办、日程、项目、习惯、心情、复盘与长期记忆，生成晨间、午后或晚间摘要。
 - 可控长期记忆：在“Firefly 眼中的我”中逐条查看、编辑、冻结或删除，并决定每条记忆是否可以进入 AI 对话上下文。
+- 受控自学习：Firefly 只从普通对话中的明确偏好、边界和长期目标生成候选，统一放进万能收件箱；确认前绝不进入长期记忆或对话上下文。
 - 对话：学习、项目、代码、状态整理、行动拆解。
 - 万能收件箱：一句话预览并确认写入待办、日程、支出、习惯、目标、灵感、项目或加密树洞；最近操作支持撤销。
 - 项目驾驶舱：集中查看里程碑、任务、关键日程、风险、灵感、决策记录和资料链接。
@@ -151,6 +152,9 @@ POST /reviews/weekly/plan
 GET  /companion/today
 GET  /companion/memories
 PATCH /companion/memories/{memory_id}
+GET  /learning/candidates
+POST /learning/candidates/{candidate_id}/confirm
+POST /learning/candidates/{candidate_id}/reject
 POST /bazi/chart
 POST /bazi/analyze
 POST /bazi/ask

@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { commitInbox, getInboxActions, getProjects, parseInbox, undoInboxAction } from '../../api/client';
-import type { InboxAction, InboxKind, InboxProposal, Project } from '../../types';
+import {
+  commitInbox,
+  confirmLearningCandidate,
+  getInboxActions,
+  getLearningCandidates,
+  getLearningPreferences,
+  getLearningWeeklySummary,
+  getProjects,
+  parseInbox,
+  rejectLearningCandidate,
+  undoInboxAction,
+  updateLearningPreferences,
+} from '../../api/client';
+import type { InboxAction, InboxKind, InboxProposal, LearningCandidate, LearningWeeklySummary, Project } from '../../types';
 import '../workspace/Workspace.css';
 import './InboxView.css';
 
@@ -13,6 +25,13 @@ const KIND_META: Record<InboxKind, { label: string; icon: string; color: string 
   idea: { label: '灵感', icon: '✦', color: '#E285A4' },
   project: { label: '项目', icon: '◇', color: '#318BB4' },
   treehole: { label: '树洞', icon: '⌁', color: '#6D638D' },
+};
+
+const MEMORY_META: Record<LearningCandidate['category'], string> = {
+  preference: '偏好',
+  goal: '长期目标',
+  context: '背景',
+  boundary: '边界',
 };
 
 function localDate(offset = 0) {
@@ -34,16 +53,33 @@ function InboxView() {
   const [committing, setCommitting] = useState(false);
   const [actions, setActions] = useState<InboxAction[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [learningCandidates, setLearningCandidates] = useState<LearningCandidate[]>([]);
+  const [learningEnabled, setLearningEnabled] = useState(true);
+  const [learningSummary, setLearningSummary] = useState<LearningWeeklySummary | null>(null);
+  const [learningBusy, setLearningBusy] = useState('');
   const [projectId, setProjectId] = useState('');
   const [password, setPassword] = useState('');
   const [unlockDate, setUnlockDate] = useState(futureLocal(6));
   const [error, setError] = useState('');
   const [toast, setToast] = useState<{ text: string; actionId?: string } | null>(null);
 
-  const load = () => Promise.all([getInboxActions(12), getProjects()]).then(([actionResult, projectResult]) => {
-    setActions((actionResult as { items: InboxAction[] }).items);
-    setProjects((projectResult as { items: Project[] }).items);
-  });
+  const load = async () => {
+    const [workspaceResult, learningResult] = await Promise.allSettled([
+      Promise.all([getInboxActions(12), getProjects()]),
+      Promise.all([getLearningCandidates('pending', 50), getLearningPreferences(), getLearningWeeklySummary()]),
+    ]);
+    if (workspaceResult.status === 'fulfilled') {
+      const [actionResult, projectResult] = workspaceResult.value;
+      setActions((actionResult as { items: InboxAction[] }).items);
+      setProjects((projectResult as { items: Project[] }).items);
+    }
+    if (learningResult.status === 'fulfilled') {
+      const [candidateResult, preferenceResult, summaryResult] = learningResult.value;
+      setLearningCandidates((candidateResult as { items: LearningCandidate[] }).items);
+      setLearningEnabled((preferenceResult as { preferences: { enabled: boolean } }).preferences.enabled);
+      setLearningSummary(summaryResult as LearningWeeklySummary);
+    }
+  };
   useEffect(() => { load().catch(() => undefined); }, []);
   useEffect(() => {
     if (!toast) return;
@@ -127,9 +163,77 @@ function InboxView() {
       setError(e instanceof Error ? e.message : '撤销失败');
     }
   };
+  const updateLearningDraft = (id: string, patch: Partial<LearningCandidate>) => {
+    setLearningCandidates((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
+  };
+  const confirmLearning = async (item: LearningCandidate) => {
+    if (!item.content.trim() || learningBusy) return;
+    setLearningBusy(item.id);
+    setError('');
+    try {
+      await confirmLearningCandidate(item.id, {
+        content: item.content.trim(),
+        category: item.category,
+        use_in_chat: item.use_in_chat,
+      });
+      setToast({ text: '已确认，写入“Firefly 眼中的我”' });
+      await load();
+      window.dispatchEvent(new CustomEvent('firefly:learning-updated'));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '确认失败');
+    } finally {
+      setLearningBusy('');
+    }
+  };
+  const rejectLearning = async (id: string) => {
+    if (learningBusy) return;
+    setLearningBusy(id);
+    setError('');
+    try {
+      await rejectLearningCandidate(id);
+      setToast({ text: '已忽略，这条不会成为长期记忆' });
+      await load();
+      window.dispatchEvent(new CustomEvent('firefly:learning-updated'));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '暂时无法忽略');
+    } finally {
+      setLearningBusy('');
+    }
+  };
+  const toggleLearning = async () => {
+    if (learningBusy) return;
+    setLearningBusy('preferences');
+    setError('');
+    try {
+      const result = await updateLearningPreferences(!learningEnabled) as { preferences: { enabled: boolean } };
+      setLearningEnabled(result.preferences.enabled);
+      setToast({ text: result.preferences.enabled ? '已恢复从普通对话中发现候选' : '已暂停自动发现；已有候选仍由你决定' });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '设置保存失败');
+    } finally {
+      setLearningBusy('');
+    }
+  };
 
   return <main className="workspace-page inbox-page">
-    <header className="workspace-head"><div><span className="workspace-eyebrow">ONE PLACE TO CAPTURE</span><h2>万能收件箱</h2><p>先把事情说出来。Firefly 会判断去处，确认以后才真正写入。</p></div><div className="workspace-head-badge"><i />解析不等于执行 · 随时撤销</div></header>
+    <header className="workspace-head"><div><span className="workspace-eyebrow">ONE PLACE TO CAPTURE & CONFIRM</span><h2>万能收件箱</h2><p>事情先在这里归位，Firefly 的新认识也先在这里等你确认。</p></div><div className="workspace-head-badge"><i />分析不等于执行 · 由你做主</div></header>
+    <section className={`inbox-learning workspace-card${learningCandidates.length ? ' has-pending' : ''}`}>
+      <header className="inbox-learning-head">
+        <div className="inbox-learning-title"><i>◇</i><span><small>FIREFLY LEARNS, YOU DECIDE</small><h3>Firefly 想向你确认</h3><p>只有确认后的内容才会成为长期记忆；你可以先修改，也可以直接忽略。</p></span></div>
+        <label className="inbox-learning-toggle"><input type="checkbox" checked={learningEnabled} disabled={learningBusy === 'preferences'} onChange={toggleLearning} /><span><i /></span><em>{learningEnabled ? '自动发现已开启' : '自动发现已暂停'}</em></label>
+      </header>
+      {learningCandidates.length ? <div className="inbox-learning-list">{learningCandidates.map((item) => <article key={item.id}>
+        <div className="inbox-learning-card-head"><span>{item.source_type === 'chat_observation' ? '从你的话里发现' : item.source_type === 'explicit_remember' ? '你让我记住' : '来自回复反馈'}</span><em>{Math.round(item.confidence * 100)}% 把握{item.occurrence_count > 1 ? ` · 出现 ${item.occurrence_count} 次` : ''}</em></div>
+        <textarea value={item.content} maxLength={240} onChange={(event) => updateLearningDraft(item.id, { content: event.target.value })} aria-label="学习候选内容" />
+        <div className="inbox-learning-fields">
+          <label><span>作为</span><select value={item.category} onChange={(event) => updateLearningDraft(item.id, { category: event.target.value as LearningCandidate['category'] })}>{Object.entries(MEMORY_META).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label className="inbox-learning-context"><input type="checkbox" checked={item.use_in_chat} onChange={(event) => updateLearningDraft(item.id, { use_in_chat: event.target.checked })} /><span>确认后允许用于对话</span></label>
+        </div>
+        <details><summary>为什么出现这条？</summary><p>{item.reason}</p>{item.evidence && <blockquote>“{item.evidence}”</blockquote>}</details>
+        <footer><button disabled={learningBusy === item.id} onClick={() => rejectLearning(item.id)}>不是我 / 忽略</button><button className="workspace-btn-primary" disabled={learningBusy === item.id || !item.content.trim()} onClick={() => confirmLearning(item)}>{learningBusy === item.id ? '处理中…' : '确认成为记忆'}</button></footer>
+      </article>)}</div> : <div className="inbox-learning-empty"><i>✓</i><span><strong>现在没有等待确认的新认识</strong><small>{learningEnabled ? 'Firefly 只会捕捉明确、稳定的表达，不会猜测你。' : '自动发现已暂停，聊天里的“记住”仍然可以使用。'}</small></span></div>}
+      <footer className="inbox-learning-week"><span>本周学习记录</span><p>{learningSummary ? `发现 ${learningSummary.generated} 条 · 你确认 ${learningSummary.confirmed} 条 · 忽略 ${learningSummary.rejected} 条` : '正在读取…'}</p><em>树洞、运势与敏感信息不会进入这里</em></footer>
+    </section>
     <section className="inbox-capture workspace-card"><div className="inbox-capture-mark">✦</div><textarea value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') analyze(); }} placeholder="例如：明天下午三点提醒我交报告 / 午饭 18 元 / 每周跑步三次…" /><div className="inbox-capture-foot"><span>{text.length ? `${text.length} 字 · Ctrl/⌘ + Enter 解析` : '一句话可以成为任务、日程、支出、习惯、目标、灵感或项目'}</span><button className="workspace-btn-primary" onClick={analyze} disabled={loading || !text.trim()}>{loading ? '正在判断…' : '解析去处'} <b>→</b></button></div></section>
     {error && <div className="workspace-error inbox-error">{error}</div>}
     <section className="inbox-layout">

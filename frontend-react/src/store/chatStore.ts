@@ -174,6 +174,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const nextMessages = [...get().messages, assistantMsg];
       set({ messages: nextMessages, isLoading: false });
       void cacheMessages(nextMessages, localChatCleared);
+      // The backend may have created a review-only learning candidate from the
+      // user's explicit wording. Refresh the inbox badge without assuming it did.
+      window.dispatchEvent(new CustomEvent('firefly:learning-updated'));
     } catch (err) {
       const errorMsg: Message = {
         id: genId(),

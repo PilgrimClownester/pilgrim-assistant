@@ -41,6 +41,7 @@ Service Worker → 缓存应用外壳和静态资源
 | `backend/productivity.py` | 待办、日程、同步墓碑 | `productivity.json` |
 | `backend/companion.py` | 日复盘、长期记忆、专注记录 | 三个 JSON 文件 |
 | `backend/daily_brief.py` | 聚合现有领域数据，生成不调用模型的早/午/晚摘要 | 无直接所有权 |
+| `backend/learning.py` | 本地识别学习候选、安全过滤、确认/拒绝和周统计 | `learning.json`；确认后调用 `companion.py` |
 | `backend/growth.py` | 心情、支出、习惯、目标、灵感 | `growth.db` |
 | `backend/workspace.py` | 万能收件箱、项目驾驶舱、周复盘 | `workspace.db`，并关联其他模块 |
 | `backend/treehole.py` | AES-GCM 加密时间胶囊、尝试限流 | `data/treehole/` |
@@ -58,7 +59,7 @@ Service Worker → 缓存应用外壳和静态资源
 | `src/App.tsx` | 页面选择、主布局和全局 overlay |
 | `src/components/layout/` | 侧栏、右侧面板、三栏框架 |
 | `src/components/home/` | 今日首页聚合视图 |
-| `src/components/inbox/` | 解析预览、确认写入和撤销 |
+| `src/components/inbox/` | 普通收纳解析/撤销，以及学习候选的编辑、确认和忽略 |
 | `src/components/projects/` | 项目驾驶舱和跨领域关联 |
 | `src/components/review/` | 周数据聚合、复盘文字与计划确认 |
 | `src/components/shared/` | 图标、错误边界、玻璃卡片等跨页面原语 |
@@ -88,11 +89,14 @@ Project
 - JSON 更新采用“临时文件写完后 `os.replace`”的原子替换方式。
 - SQLite 启用 WAL 与 `synchronous=FULL`；一次写操作放在事务中。
 - 私密树洞只保存密文、salt、nonce 和元数据，不进入聊天归档或记忆。
+- 学习候选与长期记忆分开保存；只有用户确认动作可以把候选复制到 `memories.json`。
 - 测试必须把所有存储路径替换到临时目录，禁止读取或修改真实 `data/`。
 - 不要在组件里直接读写业务 JSON；所有业务数据都经过后端接口。
 
 ## 6. 聊天上下文
 
 `POST /chat` 会组合人格、个人档案、允许用于对话且未冻结的长期记忆、任务/日程、成长数据和项目摘要。新增上下文时要限制条数和长度，避免把完整数据库拼进 prompt；树洞内容、`use_in_chat=false` 的记忆和冻结记忆永远不能进入该链路。
+
+聊天归档完成后，`learning.py` 会用本地规则观察本条用户输入。命中规则只创建 `pending` 候选，不读取助手回复、不调用外部模型，也不改变当前 prompt。确认发生在万能收件箱；确认后的记忆从下一轮对话起按 `use_in_chat` 与冻结状态参与上下文。敏感字符串、树洞与运势主题在候选创建入口统一拦截。
 
 “今日萤火”与聊天上下文是两条独立链路：前者只在 Firefly 后端用确定性规则读取聚合数据，不调用外部模型。关闭“用于对话”的活动记忆仍可作为每日记忆回声出现；冻结记忆在两条链路中都暂停使用。

@@ -74,6 +74,19 @@ from backend.growth import (
     save_mood,
     toggle_milestone,
 )
+from backend.learning import (
+    LearningCandidateConfirm,
+    LearningFeedback,
+    LearningPreferencesPatch,
+    confirm_learning_candidate,
+    get_learning_preferences,
+    learning_weekly_summary,
+    list_learning_candidates,
+    observe_user_message,
+    record_learning_feedback,
+    reject_learning_candidate,
+    update_learning_preferences,
+)
 from backend.profile import UserProfile, build_profile_context, get_profile, save_profile
 from backend.productivity import (
     ScheduleCreate,
@@ -515,6 +528,56 @@ def add_focus_session(item: FocusSessionCreate) -> dict[str, object]:
 @app.get("/companion/weekly")
 def read_weekly_summary() -> dict[str, object]:
     return weekly_summary()
+
+
+@app.get("/learning/candidates")
+def read_learning_candidates(status: str = "pending", limit: int = 50) -> dict[str, object]:
+    if status not in {"pending", "confirmed", "rejected", "all"}:
+        raise HTTPException(status_code=400, detail="Invalid learning candidate status")
+    return {"items": list_learning_candidates(status, limit)}  # type: ignore[arg-type]
+
+
+@app.post("/learning/feedback")
+def add_learning_feedback(payload: LearningFeedback) -> dict[str, object]:
+    try:
+        return {"item": record_learning_feedback(payload)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/learning/candidates/{candidate_id}/confirm")
+def confirm_learning(candidate_id: str, payload: LearningCandidateConfirm) -> dict[str, object]:
+    try:
+        result = confirm_learning_candidate(candidate_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail="学习候选不存在或已经处理")
+    candidate, memory = result
+    return {"item": candidate, "memory": memory}
+
+
+@app.post("/learning/candidates/{candidate_id}/reject")
+def reject_learning(candidate_id: str) -> dict[str, object]:
+    item = reject_learning_candidate(candidate_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="学习候选不存在或已经处理")
+    return {"item": item}
+
+
+@app.get("/learning/preferences")
+def read_learning_preferences() -> dict[str, object]:
+    return {"preferences": get_learning_preferences()}
+
+
+@app.patch("/learning/preferences")
+def patch_learning_preferences(payload: LearningPreferencesPatch) -> dict[str, object]:
+    return {"preferences": update_learning_preferences(payload)}
+
+
+@app.get("/learning/weekly")
+def read_learning_weekly_summary() -> dict[str, object]:
+    return learning_weekly_summary()
 
 
 INBOX_CLASSIFY_PROMPT = """
@@ -1378,6 +1441,12 @@ def _archive_chat_result(request: ChatRequest, result: dict[str, object]) -> dic
             response_type=str(result.get("type") or "chat"),
         )
     except OSError:
+        pass
+    # Learning is a separate, best-effort observation.  It may only create a
+    # pending candidate and must never delay or break the current conversation.
+    try:
+        observe_user_message(request.message)
+    except (OSError, ValueError):
         pass
     return result
 

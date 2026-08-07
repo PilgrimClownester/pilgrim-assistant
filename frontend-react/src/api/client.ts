@@ -433,6 +433,28 @@ export function deleteMemory(id: string) {
   return request(`/companion/memories/${id}`, { method: 'DELETE' });
 }
 
+export function getLearningCandidates(status: 'pending' | 'confirmed' | 'rejected' | 'all' = 'pending', limit = 50) {
+  return request(`/learning/candidates?status=${status}&limit=${limit}`);
+}
+
+export function createLearningFeedback(payload: { kind: 'remember' | 'too_long' | 'misunderstood'; content?: string }) {
+  return request('/learning/feedback', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function confirmLearningCandidate(id: string, payload: unknown) {
+  return request(`/learning/candidates/${id}/confirm`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function rejectLearningCandidate(id: string) {
+  return request(`/learning/candidates/${id}/reject`, { method: 'POST', body: '{}' });
+}
+
+export function getLearningPreferences() { return request('/learning/preferences'); }
+export function updateLearningPreferences(enabled: boolean) {
+  return request('/learning/preferences', { method: 'PATCH', body: JSON.stringify({ enabled }) });
+}
+export function getLearningWeeklySummary() { return request('/learning/weekly'); }
+
 export function getDailyBrief(date: string, hour: number, minute: number) {
   const query = new URLSearchParams({ day: date, hour: String(hour), minute: String(minute) });
   return request(`/companion/today?${query.toString()}`);
