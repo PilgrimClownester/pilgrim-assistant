@@ -162,11 +162,21 @@ export function postYijing(question: string) {
 
 export interface DailyFortuneResult {
   type: 'daily';
+  method_version?: number;
   seed: {
     date: string;
     keyword?: string;
     energy?: number;
     focus?: string;
+  };
+  yijing?: {
+    date?: string;
+    method?: string;
+    lines?: number[];
+    moving_lines?: number[];
+    changed_lines?: number[];
+    main_hexagram?: Record<string, unknown>;
+    changed_hexagram?: Record<string, unknown>;
   };
   answer: string;
   generated_at?: string;

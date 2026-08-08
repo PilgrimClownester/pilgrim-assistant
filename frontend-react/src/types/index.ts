@@ -110,6 +110,7 @@ export interface YijingResponse {
 export interface DailyFortuneResponse {
   type: string;
   seed: Record<string, unknown>;
+  yijing?: Record<string, unknown>;
   answer: string;
 }
 

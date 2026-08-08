@@ -51,7 +51,7 @@ from backend.fortune.daily import (
     load_daily_fortune,
 )
 from backend.fortune.tarot import build_tarot_user_prompt, draw_tarot
-from backend.fortune.yijing import build_yijing_user_prompt, cast_yijing
+from backend.fortune.yijing import build_yijing_user_prompt, cast_daily_yijing, cast_yijing
 from backend.fortune.store import FortuneSyncRequest, list_fortune_results, save_fortune_result, sync_fortune_results
 from backend.napcat_runtime import start as start_napcat_bridge
 from backend.napcat_runtime import status as napcat_bridge_status
@@ -1635,15 +1635,25 @@ def read_saved_daily_fortune() -> dict[str, object]:
 
 @app.get("/fortune/daily")
 def daily() -> dict[str, object]:
+    today_iso = date.today().isoformat()
+
     def generate() -> dict[str, object]:
-        seed = generate_daily_seed()
-        user_prompt = build_daily_user_prompt(seed)
+        seed = generate_daily_seed(today_iso)
+        yijing = cast_daily_yijing(today_iso)
+        brief = build_daily_brief(day=today_iso)
+        reality = {
+            "stats": brief.get("stats"),
+            "lead": brief.get("lead"),
+            "signals": brief.get("signals"),
+        }
+        user_prompt = build_daily_user_prompt(seed, yijing, reality)
         answer = _ask_fortune(user_prompt)
         return {
             "type": "daily",
             "seed": seed,
+            "yijing": yijing,
             "answer": answer,
         }
 
-    result, cached = get_or_create_daily_fortune(generate)
+    result, cached = get_or_create_daily_fortune(generate, today_iso)
     return {**result, "cached": cached}

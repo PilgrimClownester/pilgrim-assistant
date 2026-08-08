@@ -133,8 +133,12 @@
 | POST | `/fortune/tarot` | 塔罗 |
 | POST | `/fortune/yijing` | 易经 |
 | GET/POST | `/fortune/results/today`、`/fortune/results/sync` | 当日结果与同步 |
-| GET | `/fortune/daily` | 生成/读取每日线索 |
+| GET | `/fortune/daily` | 生成/读取每日线索，返回 `seed`、`yijing`、`answer` 和算法版本 |
 | GET | `/fortune/daily/today` | 只读取已保存的每日线索 |
+
+每日线索使用日期稳定的三枚钱币法生成六爻：同一天在手机、电脑和容器重启后保持相同，下一天自然变化。`yijing` 包含本卦、动爻和变卦；模型解读同时接收当日待办、日程与工作台信号，但现实数据只负责建议落点，不改变卦象。系统不会为了追求“每天不同”而主动排除近期出现过的卦或关键词。
+
+当前 `method_version=2`。旧版缓存、缺少日卦的缓存或空答案不会作为当日有效结果，会在下一次生成时自动覆盖；有效结果仍坚持当天只生成一次。
 
 ## 兼容性要求
 

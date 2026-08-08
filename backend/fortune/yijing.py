@@ -1,5 +1,7 @@
 import random
+from datetime import date
 from pprint import pformat
+from typing import Protocol
 
 
 TRIGRAMS = {
@@ -93,8 +95,14 @@ def _hexagram_for(lines: list[int]) -> dict[str, str]:
     return {"name": name, "meaning": meaning, "upper": upper, "lower": lower}
 
 
-def cast_yijing() -> dict[str, object]:
-    lines = [random.choice([6, 7, 8, 9]) for _ in range(6)]
+class _RandomSource(Protocol):
+    def choice(self, sequence: list[int]) -> int: ...
+
+
+def _cast_with_rng(rng: _RandomSource) -> dict[str, object]:
+    # 三枚钱币法：每枚阴面记 2、阳面记 3，因此少阴/少阳更常见，
+    # 老阴/老阳成为动爻的概率各为 1/8。
+    lines = [sum(rng.choice([2, 3]) for _ in range(3)) for _ in range(6)]
     moving_lines = [index + 1 for index, line in enumerate(lines) if line in (6, 9)]
     changed_lines = [7 if line == 6 else 8 if line == 9 else line for line in lines]
     return {
@@ -104,6 +112,18 @@ def cast_yijing() -> dict[str, object]:
         "main_hexagram": _hexagram_for(lines),
         "changed_hexagram": _hexagram_for(changed_lines),
     }
+
+
+def cast_yijing() -> dict[str, object]:
+    return _cast_with_rng(random.SystemRandom())
+
+
+def cast_daily_yijing(target_date: str | None = None) -> dict[str, object]:
+    """Return one reproducible day hexagram shared by every Firefly client."""
+    date_key = target_date or date.today().isoformat()
+    # Version the namespace so a future casting-method change can be explicit.
+    rng = random.Random(f"firefly-daily-yijing-v1:{date_key}")
+    return {"date": date_key, "method": "three_coins", **_cast_with_rng(rng)}
 
 
 def build_yijing_user_prompt(question: str, result: dict[str, object]) -> str:

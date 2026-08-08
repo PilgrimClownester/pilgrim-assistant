@@ -535,12 +535,21 @@ function getSectionVisual(title: string, index: number) {
 function DailySummary({ data }: { data: Record<string, unknown> }) {
   const seed = asRecord(data.seed);
   const energy = typeof seed?.energy === 'number' ? seed.energy : 0;
+  const yijing = asRecord(data.yijing);
+  const main = asRecord(yijing?.main_hexagram);
+  const changed = asRecord(yijing?.changed_hexagram);
+  const lines = Array.isArray(yijing?.lines) ? yijing.lines.map(Number) : [];
+  const moving = Array.isArray(yijing?.moving_lines) ? yijing.moving_lines.map(Number) : [];
   return (
     <div className="daily-summary">
       <div className="energy-ring" style={{ '--energy': `${energy * 3.6}deg` } as React.CSSProperties}>
         <span><b>{energy || '—'}</b><small>能量</small></span>
       </div>
-      <div><span>今日关键词</span><strong>{String(seed?.keyword || '顺势而行')}</strong><p>{String(seed?.focus || '把注意力交给真正重要的事')}</p></div>
+      <div className="daily-keyword"><span>今日关键词</span><strong>{String(seed?.keyword || '顺势而行')}</strong><p>{String(seed?.focus || '把注意力交给真正重要的事')}</p></div>
+      {yijing && <div className="daily-gua-brief">
+        <HexagramFigure lines={lines} moving={moving} label="今日日卦" />
+        <div><span>今日日卦</span><strong>{String(main?.name || '—')}{moving.length ? ` → ${String(changed?.name || '—')}` : ''}</strong><p>{moving.length ? `第 ${moving.join('、')} 爻动 · 观察变化中的落点` : '无动爻 · 先把当下走稳'}</p></div>
+      </div>}
     </div>
   );
 }
