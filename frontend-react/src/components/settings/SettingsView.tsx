@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import FrostedCard from '../shared/FrostedCard';
-import { createMemory, deleteMemory, exportChatArchive, getMemories, getProfile, logout, postBaziChart, saveProfile, updateMemory } from '../../api/client';
+import { createMemory, deleteMemory, exportChatArchive, getMemories, getNapcatStatus, getProfile, logout, postBaziChart, saveProfile, startNapcat, stopNapcat, updateMemory } from '../../api/client';
 import type { BirthInfo, CompanionMemory, UserProfile } from '../../types';
 import BaziChartView from './BaziChartView';
 import './SettingsView.css';
@@ -30,6 +30,9 @@ function SettingsView() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [napcatEnabled, setNapcatEnabled] = useState(false);
+  const [napcatLoading, setNapcatLoading] = useState(true);
+  const [napcatError, setNapcatError] = useState('');
   const [baziChart, setBaziChart] = useState<unknown>(null);
   const [baziLoading, setBaziLoading] = useState(false);
   const [baziError, setBaziError] = useState('');
@@ -56,6 +59,13 @@ function SettingsView() {
       .catch(() => setMemoryError('长期记忆暂时无法读取'));
   }, []);
 
+  useEffect(() => {
+    getNapcatStatus()
+      .then((status) => setNapcatEnabled(status.enabled))
+      .catch(() => setNapcatError('无法读取 QQ 对话状态'))
+      .finally(() => setNapcatLoading(false));
+  }, []);
+
   const handleSave = async () => {
     if (!profile) return;
     await saveProfile(profile);
@@ -70,6 +80,19 @@ function SettingsView() {
 
   const update = (key: keyof UserProfile, value: string | number | boolean | null) => {
     setProfile((current) => current ? { ...current, [key]: value } : current);
+  };
+
+  const toggleNapcat = async () => {
+    setNapcatLoading(true);
+    setNapcatError('');
+    try {
+      const status = napcatEnabled ? await stopNapcat() : await startNapcat();
+      setNapcatEnabled(status.enabled);
+    } catch {
+      setNapcatError('切换失败。请确认 NapCat 已启动、已登录，且 .env 中的 NAPCAT_TOKEN 正确。');
+    } finally {
+      setNapcatLoading(false);
+    }
   };
 
   const toggleBaziChart = async () => {
@@ -301,6 +324,17 @@ function SettingsView() {
           {archiveStatus && <p className="settings-archive-status">{archiveStatus}</p>}
         </FrostedCard>
 
+        <FrostedCard style={{ padding: 22 }}>
+          <h3 style={sectionTitleStyle}>QQ 对话</h3>
+          <p style={hintStyle}>开启后 Firefly 会自动连接 NapCat；仅允许 QQ 449140441 与机器人私聊。</p>
+          <label style={toggleRowStyle}>
+            <span>{napcatEnabled ? 'QQ 对话已开启' : 'QQ 对话已关闭'}</span>
+            <button type="button" onClick={toggleNapcat} disabled={napcatLoading} style={napcatEnabled ? stopButtonStyle : primaryButtonStyle}>
+              {napcatLoading ? '处理中…' : napcatEnabled ? '关闭 QQ 对话' : '开启 QQ 对话'}
+            </button>
+          </label>
+          {napcatError && <p style={errorStyle}>{napcatError}</p>}
+        </FrostedCard>
       </div>
     </div>
   );
@@ -332,5 +366,9 @@ const inputStyle: React.CSSProperties = { padding: '9px 11px', background: 'rgba
 const textareaStyle: React.CSSProperties = { ...inputStyle, minHeight: 86, resize: 'vertical' };
 const checkboxStyle: React.CSSProperties = { display: 'flex', gap: 8, alignItems: 'center', color: 'var(--text-main)', fontSize: 'var(--font-size-sm)' };
 const primaryButtonStyle: React.CSSProperties = { padding: '10px 16px', borderRadius: 8, background: 'var(--primary-blue)', color: 'white', fontWeight: 700 };
+const stopButtonStyle: React.CSSProperties = { ...primaryButtonStyle, background: 'rgba(205, 82, 104, 0.9)' };
+const toggleRowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', color: 'var(--text-main)', fontSize: 'var(--font-size-sm)' };
+const hintStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)', lineHeight: 1.6, margin: '0 0 14px' };
+const errorStyle: React.CSSProperties = { color: '#c94f68', fontSize: 'var(--font-size-sm)', lineHeight: 1.5, margin: '12px 0 0' };
 
 export default SettingsView;

@@ -6,3 +6,4 @@ pydantic
 lunar_python
 pillow
 cryptography>=42.0
+websockets>=14.0

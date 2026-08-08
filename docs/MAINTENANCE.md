@@ -84,7 +84,7 @@ sqlite3 data/workspace.db 'PRAGMA integrity_check;'
 
 当前蒲公英入口适合可信虚拟局域网，不等同于可以直接暴露公网。后端当前没有用户登录和 API token；若以后通过公网域名或端口转发访问，必须先增加身份认证、HTTPS、请求限流和来源限制。
 
-`.env`、DeepSeek Key、树洞密码不得提交仓库或写入日志。远程排障时优先提供错误信息，不要直接发送整个 `data/`。
+`.env`、QQ 凭据、DeepSeek Key、树洞密码不得提交仓库或写入日志。远程排障时优先提供错误信息，不要直接发送整个 `data/`。
 
 ## 7. 发布维护
 

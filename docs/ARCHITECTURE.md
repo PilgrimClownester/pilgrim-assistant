@@ -1,6 +1,6 @@
 # Firefly 架构说明
 
-更新时间：2026-08-08
+更新时间：2026-07-30
 
 ## 1. 运行结构
 
@@ -9,9 +9,11 @@ Electron 主窗口 ─┐
 桌面浏览器       ├─ Vite / React UI ─ HTTP ─ FastAPI ─ 领域模块 ─ data/
 蒲公英手机浏览器 ┘       │                  │
                          └─ /api 代理 ──────┘
+
+QQ 官方机器人 / NapCat ──────────────── /chat
 ```
 
-生产环境以服务器为中心：FastAPI 与业务数据常驻服务器；手机直接打开 Web 应用，笔记本 Electron 保留主窗口与透明桌宠窗口并连接同一服务。
+生产环境以服务器为中心：FastAPI、业务数据和 NapCat/QQ 常驻服务器；手机直接打开 Web 应用，笔记本 Electron 保留主窗口与透明桌宠窗口并连接同一服务。
 
 ### 离线数据流
 
@@ -24,7 +26,7 @@ Service Worker → 缓存应用外壳和静态资源
 - 待办、日程使用 `updated_at` 与删除墓碑做双向合并。
 - Edge AI 阶段完成状态先写入本地 pending，再按阶段补交服务器。
 - 已成功登录的设备保存“可信设备”标记；断网时允许进入本地缓存，但不保存密码。
-- 对话、模型调用和占卜不提供离线模拟。
+- 对话、模型调用、占卜和 NapCat/QQ 不提供离线模拟。
 
 - `run_firefly.py` 是统一启动器：选择当前系统的 Node 依赖、清理旧进程、启动后端、桌面端以及可选的蒲公英手机入口。
 - Electron 开发窗口加载 `http://localhost:5173`；手机入口使用 `web` mode 和 `5174` 端口。
@@ -46,6 +48,7 @@ Service Worker → 缓存应用外壳和静态资源
 | `backend/profile.py` | 用户档案和出生信息 | `profile.json` |
 | `backend/chat_archive.py` | 对话归档 | `chat_archive.jsonl` |
 | `backend/fortune/` | 日运、塔罗、易经和结果存档 | Fortune JSON 文件 |
+| `backend/napcat_runtime.py` | NapCat 桥接进程生命周期 | 进程内状态 |
 
 领域模块应承担校验、持久化和派生字段计算；路由层只负责 HTTP 状态码与编排。后续拆分 `main.py` 时，优先按 `productivity`、`workspace`、`growth`、`fortune` 创建 `APIRouter`，不要把业务逻辑再复制一份。
 

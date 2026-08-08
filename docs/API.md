@@ -19,6 +19,9 @@
 | --- | --- | --- |
 | GET | `/health` | 后端健康状态 |
 | GET/PUT | `/profile` | 读取/保存个人档案 |
+| GET | `/qq/napcat` | NapCat 状态 |
+| POST | `/qq/napcat/start` | 启动 NapCat 桥接 |
+| POST | `/qq/napcat/stop` | 停止 NapCat 桥接 |
 
 ## 任务与日程
 

@@ -76,6 +76,18 @@ export function getHealth(): Promise<{ status: string }> {
   return request('/health');
 }
 
+export function getNapcatStatus() {
+  return request<{ enabled: boolean; allowed_qq: string }>('/qq/napcat');
+}
+
+export function startNapcat() {
+  return request<{ enabled: boolean; allowed_qq: string }>('/qq/napcat/start', { method: 'POST' });
+}
+
+export function stopNapcat() {
+  return request<{ enabled: boolean; allowed_qq: string }>('/qq/napcat/stop', { method: 'POST' });
+}
+
 export function getProfile() {
   return request('/profile');
 }
