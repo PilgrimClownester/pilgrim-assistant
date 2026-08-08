@@ -53,9 +53,6 @@ from backend.fortune.daily import (
 from backend.fortune.tarot import build_tarot_user_prompt, draw_tarot
 from backend.fortune.yijing import build_yijing_user_prompt, cast_daily_yijing, cast_yijing
 from backend.fortune.store import FortuneSyncRequest, list_fortune_results, save_fortune_result, sync_fortune_results
-from backend.napcat_runtime import start as start_napcat_bridge
-from backend.napcat_runtime import status as napcat_bridge_status
-from backend.napcat_runtime import stop as stop_napcat_bridge
 from backend.growth import (
     ExpenseCreate,
     GoalCreate,
@@ -337,28 +334,6 @@ def root() -> dict[str, str]:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
-
-
-@app.get("/qq/napcat")
-def get_napcat_status() -> dict[str, object]:
-    """返回桌面端按需启动的 NapCat QQ 桥接器状态。"""
-    return napcat_bridge_status()
-
-
-@app.post("/qq/napcat/start")
-def start_napcat(request: Request) -> dict[str, object]:
-    """启动只允许 QQ 449140441 私聊的 NapCat 桥接器。"""
-    return start_napcat_bridge(str(request.base_url).rstrip("/"))
-
-
-@app.post("/qq/napcat/stop")
-def stop_napcat() -> dict[str, object]:
-    return stop_napcat_bridge()
-
-
-@app.on_event("shutdown")
-def shutdown_napcat_bridge() -> None:
-    stop_napcat_bridge()
 
 
 @app.get("/profile")

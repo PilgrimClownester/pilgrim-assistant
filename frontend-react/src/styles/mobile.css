@@ -247,30 +247,6 @@
     box-shadow: 0 0 0 4px rgba(76, 186, 160, 0.11);
   }
 
-  .chat-qq-button {
-    max-width: 92px;
-    min-height: 36px;
-    margin-left: auto;
-    padding: 7px 9px;
-    overflow: hidden;
-    color: #5f7e88;
-    font-size: 0.61rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    border-color: rgba(70, 159, 176, 0.16);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.64);
-    box-shadow: none;
-  }
-
-  .chat-qq-label--desktop {
-    display: none;
-  }
-
-  .chat-qq-label--mobile {
-    display: inline;
-  }
-
   .message-list {
     padding: 12px 12px 10px;
     gap: 0;

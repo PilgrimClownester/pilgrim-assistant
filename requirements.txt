@@ -8,6 +8,3 @@ requests
 lunar_python
 pillow
 cryptography>=42.0
-# Optional: official QQ Bot adapter. Required only when starting start_qq_bot.py.
-qq-botpy>=1.2.1
-websockets>=14.0

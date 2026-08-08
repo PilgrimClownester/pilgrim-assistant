@@ -1,7 +1,6 @@
 import logging
 import os
 import json
-import shlex
 import shutil
 import signal
 import socket
@@ -445,29 +444,6 @@ def ensure_platform_node_modules() -> bool:
     return True
 
 
-def _launch_napcat_qq() -> subprocess.Popen | None:
-    """如果 NapCat WS 端口未在监听，则启动 QQ 桌面程序。"""
-    ws_url = os.getenv("NAPCAT_WS_URL", "ws://127.0.0.1:8095")
-    without_scheme = ws_url.split("://", 1)[-1].split("/", 1)[0]
-    host, _, port_text = without_scheme.rpartition(":")
-    if host and port_text.isdigit():
-        try:
-            with socket.create_connection((host, int(port_text)), timeout=0.3):
-                return None  # 已在监听
-        except OSError:
-            pass
-    executable = os.getenv("NAPCAT_QQ_EXECUTABLE", "").strip()
-    if not executable:
-        return None
-    executable_path = Path(executable).expanduser()
-    if not executable_path.is_file():
-        logging.warning("找不到 NapCat QQ 启动文件：%s", executable_path)
-        return None
-    arguments = shlex.split(os.getenv("NAPCAT_QQ_ARGS", ""))
-    logging.info("启动 NapCat QQ：%s", executable_path)
-    return subprocess.Popen([str(executable_path), *arguments], cwd=executable_path.parent)
-
-
 def main() -> int:
     if not FRONTEND_DIR.exists():
         print("找不到 frontend-react 目录。", file=sys.stderr)
@@ -481,13 +457,9 @@ def main() -> int:
     backend = None
     frontend = None
     mobile_frontend = None
-    qq_bot = None
-    napcat_bridge = None
 
     def handle_stop(signum, frame):  # noqa: ARG001
         terminate(mobile_frontend)
-        terminate(napcat_bridge)
-        terminate(qq_bot)
         terminate(frontend)
         terminate(backend)
         raise SystemExit(130)
@@ -544,23 +516,6 @@ def main() -> int:
                 return 1
 
         print(f"打开 Firefly 桌面窗口，API：http://{API_HOST}:{api_port}")
-        if os.getenv("QQ_BOT_ENABLED", "").strip().lower() in {"1", "true", "yes", "on"}:
-            qq_env = os.environ.copy()
-            qq_env["FIREFLY_API_BASE"] = f"http://{API_HOST}:{api_port}"
-            print("启动 QQ Bot（仅接收 QQ_BOT_ALLOWED_OPENIDS 中的用户私聊）。")
-            qq_bot = subprocess.Popen([sys.executable, "start_qq_bot.py"], cwd=ROOT_DIR, env=qq_env)
-
-        if os.getenv("NAPCAT_ENABLED", "").strip().lower() in {"1", "true", "yes", "on"}:
-            napcat_env = os.environ.copy()
-            napcat_env["FIREFLY_API_BASE"] = f"http://{API_HOST}:{api_port}"
-            print("启动 NapCat QQ 桥接器...")
-            _launch_napcat_qq()
-            napcat_bridge = subprocess.Popen(
-                [sys.executable, "start_napcat_bot.py"],
-                cwd=ROOT_DIR,
-                env=napcat_env,
-            )
-
         frontend_env = os.environ.copy()
         frontend_env.pop("ELECTRON_RUN_AS_NODE", None)
         frontend_env["VITE_FIREFLY_API_BASE"] = f"http://{API_HOST}:{api_port}"
@@ -595,8 +550,6 @@ def main() -> int:
         return frontend.wait()
     finally:
         terminate(mobile_frontend)
-        terminate(napcat_bridge)
-        terminate(qq_bot)
         terminate(frontend)
         terminate(backend)
 

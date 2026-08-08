@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { getNapcatStatus, startNapcat, stopNapcat } from '../../api/client';
+import { useEffect } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
@@ -8,32 +7,11 @@ import LoadingDots from '../shared/LoadingDots';
 
 function ChatView() {
   const { messages, isLoading, isHydrating, hydrate, sendMessage, clearLocalChat } = useChatStore();
-  const [qqEnabled, setQqEnabled] = useState(false);
-  const [qqLoading, setQqLoading] = useState(true);
   const hasLocalChat = messages.some((message) => message.id !== 'greeting' && message.role !== 'error');
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
-
-  useEffect(() => {
-    getNapcatStatus()
-      .then((status) => setQqEnabled(status.enabled))
-      .catch(() => {})
-      .finally(() => setQqLoading(false));
-  }, []);
-
-  const toggleQqChat = async () => {
-    setQqLoading(true);
-    try {
-      const status = qqEnabled ? await stopNapcat() : await startNapcat();
-      setQqEnabled(status.enabled);
-    } catch {
-      // 详细配置提示在“设置 → QQ 对话”中展示，避免打断本地聊天。
-    } finally {
-      setQqLoading(false);
-    }
-  };
 
   const handleClearLocalChat = () => {
     if (!hasLocalChat || isLoading || isHydrating) return;
@@ -52,15 +30,6 @@ function ChatView() {
           <span className="chat-header-eyebrow">FIREFLY COMPANION</span>
           <span className="chat-header-title"><span aria-hidden="true">✦</span> 对话</span>
         </div>
-        <button
-          type="button"
-          onClick={toggleQqChat}
-          disabled={qqLoading}
-          className={`chat-qq-button${qqEnabled ? ' chat-qq-button--active' : ''}`}
-        >
-          <span className="chat-qq-label--desktop">{qqLoading ? 'QQ 连接中…' : qqEnabled ? 'QQ 对话：已开启' : '开启 QQ 对话'}</span>
-          <span className="chat-qq-label--mobile">{qqLoading ? '连接中…' : qqEnabled ? 'QQ 已开启' : '连接 QQ'}</span>
-        </button>
         <button
           type="button"
           onClick={handleClearLocalChat}
