@@ -124,7 +124,7 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
     <main className="home-dashboard">
       <header className="home-header">
         <div className="home-header-copy">
-          <span className="home-eyebrow">YOUR DAY WITH FIREFLY</span>
+          <span className="home-eyebrow">FIREFLY · DAILY LETTER</span>
           <h2>{greeting}</h2>
           <p className="home-date-line"><span>{formatFullDate(false)}</span><span className="home-date-note">{isMobile ? '今天只推进一件事。' : '今天只需要把最重要的事往前推一点。'}</span></p>
         </div>
