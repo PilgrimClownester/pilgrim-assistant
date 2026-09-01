@@ -1,139 +1,99 @@
 # Firefly
 
-Firefly 是一个以服务器为数据与 AI 中心、同时支持浏览器、手机和 Electron 桌宠的私人助手。
+Firefly 是一个为个人长期使用而构建的 AI 助手：以服务器作为数据与智能中心，同时提供浏览器、手机和 Electron 桌面端，并保留一个可以停留在桌面的流萤桌宠。
 
-开发与维护资料见 [docs/README.md](docs/README.md)，包括架构、开发流程、UI 设计系统、备份恢复和代码审查报告。
+它不是通用 SaaS，也不以社交或内容展示为目标。项目更关心三个问题：个人信息能否由自己掌控、常用功能能否在断网时继续工作，以及一个助手能否在长期使用中保持安静、连续和可解释。
 
-长期方向：轻盈青蓝色的磨砂玻璃 UI、左侧功能导航、右侧信息面板、桌面悬浮小人和可扩展的插件体系；加密树洞与部分运势工具保留更沉浸的独立主题。八字命理作为工具插件之一，不是主入口。
+> 当前处于持续开发阶段。仓库包含完整实现，但不提供带有个人数据的公开演示账号。
 
-当前主线：服务器运行 FastAPI 与 DeepSeek；React Web 供手机和浏览器使用；笔记本保留 Electron 与桌宠窗口。
+## 主要能力
 
-待办、日程和 Edge AI 学习进度采用离线优先模式：已经登录过的设备会从 IndexedDB 立即读取数据，断网时仍可查看和编辑，恢复网络后通过时间戳与删除墓碑自动合并到服务器。AI 对话和占卜仍需要网络。
+- **个人工作台**：待办、日程、习惯、目标、灵感、支出和项目进度集中管理。
+- **AI 对话**：保存云端会话上下文，并支持用户主动删除设备上的聊天记录。
+- **离线优先**：待办、日程和学习进度优先从 IndexedDB 加载；恢复网络后再与服务器合并。
+- **Edge AI Learning**：以阶段卡片组织学习目标、资料、Checklist、思考挑战与阶段成果。
+- **项目驾驶舱**：关联任务、里程碑、关键日程、风险、灵感和决策记录。
+- **每周复盘**：聚合一周的完成事项与状态，并生成可确认的下周行动。
+- **长期记忆**：记忆可以查看、修改、冻结或删除；只有明确允许的内容才会进入对话上下文。
+- **Electron 桌宠**：笔记本端保留原生桌面窗口与悬浮角色，Web 端则适配手机和普通浏览器。
 
-## 启动方式
+传统文化与自我反思工具作为独立插件存在，不构成产品主入口，也不替代医疗、法律、投资或其他专业判断。
 
-### 桌面应用（推荐，一条指令）
+## 架构
+
+```text
+Browser / Mobile PWA ─┐
+                     ├── React + TypeScript ── FastAPI ── SQLite / files
+Electron + Companion ┘                              │
+                                                    └── AI API
+```
+
+- `frontend-react/`：React Web、移动端布局、离线缓存和 Electron 渲染层。
+- `backend/`：FastAPI 接口、认证、同步、对话与个人数据服务。
+- `frontend-react/electron/`：桌面窗口和桌宠相关能力。
+- `docs/`：架构、开发流程、设计系统、备份恢复与审查记录。
+- `data/`：运行期个人数据，不应提交到 Git。
+
+## 快速开始
+
+### 桌面端
 
 Windows：
 
 ```powershell
-cd D:\zxy\Firefly\pilgrim-assistant
+git clone https://github.com/PilgrimClownester/pilgrim-assistant.git
+cd pilgrim-assistant
+Copy-Item .env.example .env
 .\start_firefly.bat
 ```
 
-macOS / Linux：
+Linux / macOS：
 
 ```bash
-cd /media/pilgrim/F4C0720FC071D876/zxy/Firefly/pilgrim-assistant
+git clone https://github.com/PilgrimClownester/pilgrim-assistant.git
+cd pilgrim-assistant
+cp .env.example .env
 ./start_firefly.sh
 ```
 
-兼容旧命令：
+启动器会准备前端依赖、启动 FastAPI，并打开 Electron 窗口。Windows 与 Linux 使用各自的 `node_modules`，避免双系统共享依赖造成二进制模块冲突。
 
-```powershell
-.\firefly.bat
-```
-
-这个入口会自动启动 FastAPI 后端，然后打开 Electron 桌面窗口。Vite 只作为桌面窗口的开发服务使用，不需要手动用浏览器打开。
-
-双系统说明：
-
-- Windows 和 Linux 不共用 `frontend-react/node_modules`。
-- 启动器会按当前系统自动切换到 `frontend-react/.deps/windows-node_modules` 或 `frontend-react/.deps/linux-node_modules`。
-- 某个系统第一次启动时，如果还没有对应依赖，会自动执行 `npm install`，之后就会直接启动。
-- 如果自动安装失败，先确认当前系统已安装 Node.js/npm，再重新运行启动脚本。
-
-### 兼容旧入口
+### Docker 服务器
 
 ```bash
-python3 desktop_app.py    # Tkinter 桌面版（旧）
-```
-
-### 浏览器版（旧）
-
-```bash
-uvicorn backend.main:app --reload --port 8000
-streamlit run frontend/streamlit_app.py
-```
-
-## 安装
-
-```powershell
-cd D:\zxy\Firefly\pilgrim-assistant
-pip install -r requirements.txt
-Copy-Item .env.example .env
-```
-
-Linux：
-
-```bash
-cd /media/pilgrim/F4C0720FC071D876/zxy/Firefly/pilgrim-assistant
-python3 -m pip install -r requirements.txt
 cp .env.example .env
+# 编辑 .env，配置 API 密钥、认证和数据目录
+docker compose up -d --build
+docker compose ps
 ```
 
-编辑 `.env`，填入你的 DeepSeek API Key：
+生产部署建议仅将容器端口绑定到 `127.0.0.1`，再由 Nginx/Caddy 提供 HTTPS、请求大小限制和安全响应头。
+
+## AI 配置
+
+在 `.env` 中配置兼容接口。不要把真实密钥提交到仓库：
 
 ```env
-DEEPSEEK_API_KEY=your_deepseek_api_key_here
+DEEPSEEK_API_KEY=replace_me
+DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-v4-pro
 DEEPSEEK_FLASH_MODEL=deepseek-v4-flash
-DEEPSEEK_BASE_URL=https://api.deepseek.com
 ```
 
-不要把个人隐私写入 `.env`。个人档案保存在本地 `data/profile.json`。
+Firefly 不要求本地部署大模型；当前主线通过远程 API 完成对话与解释性任务，确定性计算和数据整理尽量在本地代码中完成。
 
-服务器主线不包含第三方聊天平台适配器；旧的可选适配实现保存在 `feature/qq-napcat` 分支，可在目标服务器具备运行条件后选择性合并。
+## 数据与隐私
 
-## 桌面窗口功能
+- `.env`、数据库、个人档案、聊天内容与备份均不应进入版本控制。
+- 普通页面采用登录后访问；敏感写作空间与主应用分离部署。
+- 离线同步使用更新时间与删除墓碑合并，避免删除的数据在其他设备上重新出现。
+- AI 长期记忆必须经过用户确认，并允许逐条撤回。
+- 部署前请生成独立的会话密钥和强密码，不要沿用示例值。
 
-- 默认进入首页工作台，Firefly 是通用个人助手，八字只是工具能力之一。
-- 今日萤火：根据设备本地时间，以不调用外部模型的规则聚合待办、日程、项目、习惯、心情、复盘与长期记忆，生成晨间、午后或晚间摘要。
-- 今日运势：每天以三枚钱币法生成一个多端一致的日卦，结合本卦、动爻、变卦和当天工作台状态给出现实行动参考；允许主题自然重复，不做人为避让。
-- 可控长期记忆：在“Firefly 眼中的我”中逐条查看、编辑、冻结或删除，并决定每条记忆是否可以进入 AI 对话上下文。
-- 受控自学习：Firefly 只从普通对话中的明确偏好、边界和长期目标生成候选，统一放进万能收件箱；确认前绝不进入长期记忆或对话上下文。
-- 对话：学习、项目、代码、状态整理、行动拆解。
-- 万能收件箱：一句话预览并确认写入待办、日程、支出、习惯、目标、灵感、项目或加密树洞；最近操作支持撤销。
-- 项目驾驶舱：集中查看里程碑、任务、关键日程、风险、灵感、决策记录和资料链接。
-- 每周复盘：自动聚合完成事项、专注、心情、支出、习惯、目标和项目进展，保存复盘后可确认生成下周任务。
-- 八字排盘：读取个人档案，本地生成结构化排盘。
-- 八字解读：读取个人档案，调用 DeepSeek 解释排盘。
-- 八字追问：围绕八字结构继续提问。
-- Firefly 性格：单独设置 Firefly 的语气、边界和回答偏好。
-- 个人档案：统一编辑称呼、关注方向、目标和出生信息。
+## 开发资料
 
-## 后端接口
+更完整的架构说明、UI 规范、备份恢复和维护流程见 [`docs/README.md`](docs/README.md)。
 
-```text
-GET  /health
-GET  /profile
-PUT  /profile
-POST /chat
-POST /inbox/parse
-POST /inbox/commit
-GET  /projects
-POST /projects
-GET  /reviews/weekly
-POST /reviews/weekly
-POST /reviews/weekly/plan
-GET  /companion/today
-GET  /companion/memories
-PATCH /companion/memories/{memory_id}
-GET  /learning/candidates
-POST /learning/candidates/{candidate_id}/confirm
-POST /learning/candidates/{candidate_id}/reject
-POST /bazi/chart
-POST /bazi/analyze
-POST /bazi/ask
-```
+## 项目状态
 
-## 安全边界
-
-- 不使用 Ollama。
-- 不使用本地 LLM。
-- 不使用 llama.cpp。
-- 不在代码中硬编码 DeepSeek API Key。
-- 八字排盘由本地程序完成，DeepSeek 不参与四柱计算。
-- 八字解读仅作为传统文化、娱乐性和自我反思参考。
-- 它不能替代现实判断、专业建议、医学建议、法律建议或投资建议。
-- 不做绝对预测，不恐吓用户，不替用户做重大人生决定。
+Firefly 首先服务于作者自己的长期使用，因此接口和数据结构仍会随真实需求演进。欢迎阅读代码和提出建议；若基于本项目搭建自己的助手，请使用独立密钥、数据库和身份信息。
