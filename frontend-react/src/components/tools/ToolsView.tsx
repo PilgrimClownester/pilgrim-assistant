@@ -332,7 +332,7 @@ function DailyControl({ date, saved, loading, onRun }: { date: string; saved: bo
         <span>{saved ? '今日已生成' : loading ? '正在点亮…' : '生成今日运势'}</span>
         <b aria-hidden="true">→</b>
       </button>
-      <p className="oracle-privacy-note">当天仅生成一次，并在电脑与手机之间共享。</p>
+      <p className="oracle-privacy-note">当天仅生成一次，结果保存在这台电脑上。</p>
     </div>
   );
 }

@@ -16,7 +16,6 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
   onNavigate: (page: HomeTarget) => void;
   onStartFocus: (title: string) => void;
 }) {
-  const isMobile = useMobileHome();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [schedule, setSchedule] = useState<ScheduleEvent[]>([]);
@@ -81,7 +80,7 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
   }, [schedule, today, todos]);
 
   const seed = daily?.seed;
-  const greeting = getGreeting(isMobile ? '' : profile?.nickname || '', false);
+  const greeting = getGreeting(profile?.nickname || '');
 
   const toggleReminders = async () => {
     let enabled = !reminders;
@@ -126,16 +125,11 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
         <div className="home-header-copy">
           <span className="home-eyebrow">FIREFLY · DAILY LETTER</span>
           <h2>{greeting}</h2>
-          <p className="home-date-line"><span>{formatFullDate(false)}</span><span className="home-date-note">{isMobile ? '今天只推进一件事。' : '今天只需要把最重要的事往前推一点。'}</span></p>
+          <p className="home-date-line"><span>{formatFullDate()}</span><span className="home-date-note">今天只需要把最重要的事往前推一点。</span></p>
         </div>
         <div className="home-header-actions">
-          <button className="home-mobile-fortune" onClick={() => onNavigate('tools')} aria-label="打开每日线索">
-            <small>✦ DAILY SIGNAL</small>
-            <div><strong>{seed?.energy || '—'}</strong><span>{translateDailyKeyword(seed?.keyword)}</span></div>
-          </button>
-          <button className={`home-reminder-toggle${reminders ? ' is-on' : ''}`} onClick={toggleReminders}><i /><span>{isMobile ? (reminders ? 'Reminders on' : 'Enable alerts') : (reminders ? '提醒已开启' : '开启智能提醒')}</span></button>
+          <button className={`home-reminder-toggle${reminders ? ' is-on' : ''}`} onClick={toggleReminders}><i /><span>{reminders ? '提醒已开启' : '开启智能提醒'}</span></button>
         </div>
-        <img className="home-mobile-firefly" src="./assets/firefly-catlie.png" alt="Firefly" />
       </header>
 
       <section className="home-workspace-strip" aria-label="Firefly 工作台">
@@ -172,12 +166,12 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
 
       <section className="home-flow-grid">
           <article className="home-flow-card">
-          <header><div><span>NEXT UP</span><h3>{isMobile ? '日程' : '今天的节奏'}</h3></div><button onClick={() => onNavigate('schedule')}>{isMobile ? '全部' : '打开日程'}</button></header>
-          {view.todayEvents.length ? <div className="home-agenda">{view.todayEvents.slice(0,4).map((item) => <div key={item.id} className={item.done ? 'is-done' : ''}><time>{item.start_time || (isMobile ? '随时' : '未定')}</time><i /><span><strong>{item.title}</strong><small>{item.end_time ? `至 ${item.end_time}` : (isMobile ? '灵活' : '灵活安排')}</small></span>{item === view.next && <em>下一项</em>}</div>)}</div> : <EmptyLine text={isMobile ? '暂无日程' : '今天还没有日程，给主线留一段完整时间。'} />}
+          <header><div><span>NEXT UP</span><h3>今天的节奏</h3></div><button onClick={() => onNavigate('schedule')}>打开日程</button></header>
+          {view.todayEvents.length ? <div className="home-agenda">{view.todayEvents.slice(0,4).map((item) => <div key={item.id} className={item.done ? 'is-done' : ''}><time>{item.start_time || '未定'}</time><i /><span><strong>{item.title}</strong><small>{item.end_time ? `至 ${item.end_time}` : '灵活安排'}</small></span>{item === view.next && <em>下一项</em>}</div>)}</div> : <EmptyLine text="今天还没有日程，给主线留一段完整时间。" />}
         </article>
           <article className="home-flow-card">
-          <header><div><span>FOCUS LIST</span><h3>{isMobile ? '任务' : '接下来要做'}</h3></div><button onClick={() => onNavigate('todo')}>{isMobile ? '全部' : '全部任务'}</button></header>
-          {view.todayActiveTodos.length ? <div className="home-task-list">{view.todayActiveTodos.slice(0,4).map((item,index) => <button key={item.id} onClick={() => onStartFocus(item.title)}><i>{String(index + 1).padStart(2,'0')}</i><span><strong>{item.title}</strong><small>{isMobile ? '今天' : '今天到期'}</small></span><b>{isMobile ? '专注' : '专注'}</b></button>)}</div> : <EmptyLine text={isMobile ? '暂无待办' : '今天没有待办，可以从容安排。'} />}
+          <header><div><span>FOCUS LIST</span><h3>接下来要做</h3></div><button onClick={() => onNavigate('todo')}>全部任务</button></header>
+          {view.todayActiveTodos.length ? <div className="home-task-list">{view.todayActiveTodos.slice(0,4).map((item,index) => <button key={item.id} onClick={() => onStartFocus(item.title)}><i>{String(index + 1).padStart(2,'0')}</i><span><strong>{item.title}</strong><small>今天到期</small></span><b>专注</b></button>)}</div> : <EmptyLine text="今天没有待办，可以从容安排。" />}
         </article>
       </section>
 
@@ -187,9 +181,9 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
       </section>
 
       <section className="home-focus-launcher">
-        <div className="home-focus-icon"><span>25</span><small>{isMobile ? '分钟' : 'min'}</small></div>
-        <div className="home-focus-copy"><span>LOCAL POMODORO</span><h3>{isMobile ? '专注' : '番茄钟'}</h3><p>{isMobile ? '只在本机计时。' : '只在当前设备计时，手机和电脑互不打断。'}</p></div>
-        <button onClick={() => onStartFocus(view.todayActiveTodos[0]?.title || view.next?.title || (isMobile ? '自由专注' : '自由专注'))}>{isMobile ? '开始' : '开始专注'} <b>→</b></button>
+        <div className="home-focus-icon"><span>25</span><small>min</small></div>
+        <div className="home-focus-copy"><span>LOCAL POMODORO</span><h3>番茄钟</h3><p>专注计时只保存在这台电脑上。</p></div>
+        <button onClick={() => onStartFocus(view.todayActiveTodos[0]?.title || view.next?.title || '自由专注')}>开始专注 <b>→</b></button>
       </section>
 
       <section className="home-insight-grid">
@@ -199,39 +193,20 @@ function HomeDashboard({ onNavigate, onStartFocus }: {
           <p className="home-week-note">{getWeeklyNote(weekly)}</p>
         </article>
         <article className={`home-review-card${reviewOpen ? ' is-open' : ''}`}>
-          <header><div><span>EVENING REVIEW</span><h3>{isMobile ? '收好今天' : '把今天轻轻收好'}</h3></div><button onClick={() => setReviewOpen((value) => !value)}>{isMobile ? (reviewOpen ? '收起' : '复盘') : (reviewOpen ? '收起' : '开始复盘')}</button></header>
-          {reviewOpen ? <div className="home-review-form"><div className="home-moods">{([['bright','明亮'],['steady','平稳'],['tired','疲惫'],['heavy','沉重']] as const).map(([value,label]) => <button key={value} className={review.mood === value ? 'is-active' : ''} onClick={() => setReview((current) => ({ ...current, mood: value }))}>{label}</button>)}</div><label><span>今天完成了什么？</span><input value={review.win} onChange={(event) => setReview((current) => ({ ...current, win: event.target.value }))} /></label><label><span>哪件事最消耗你？</span><input value={review.challenge} onChange={(event) => setReview((current) => ({ ...current, challenge: event.target.value }))} /></label><label><span>明天最想推进什么？</span><input value={review.tomorrow} onChange={(event) => setReview((current) => ({ ...current, tomorrow: event.target.value }))} /></label><label className="home-review-todo"><input type="checkbox" checked={addTomorrowTodo} onChange={(event) => setAddTomorrowTodo(event.target.checked)} /><span>同时加入明日任务</span></label><button className="home-save-review" onClick={submitReview}>{isMobile ? (reviewSaved ? '已收好' : '保存复盘') : (reviewSaved ? '已经收好今天' : '保存今天的复盘')}</button></div> : <p>三句话就够了：完成、消耗、明天。</p>}
+          <header><div><span>EVENING REVIEW</span><h3>把今天轻轻收好</h3></div><button onClick={() => setReviewOpen((value) => !value)}>{reviewOpen ? '收起' : '开始复盘'}</button></header>
+          {reviewOpen ? <div className="home-review-form"><div className="home-moods">{([['bright','明亮'],['steady','平稳'],['tired','疲惫'],['heavy','沉重']] as const).map(([value,label]) => <button key={value} className={review.mood === value ? 'is-active' : ''} onClick={() => setReview((current) => ({ ...current, mood: value }))}>{label}</button>)}</div><label><span>今天完成了什么？</span><input value={review.win} onChange={(event) => setReview((current) => ({ ...current, win: event.target.value }))} /></label><label><span>哪件事最消耗你？</span><input value={review.challenge} onChange={(event) => setReview((current) => ({ ...current, challenge: event.target.value }))} /></label><label><span>明天最想推进什么？</span><input value={review.tomorrow} onChange={(event) => setReview((current) => ({ ...current, tomorrow: event.target.value }))} /></label><label className="home-review-todo"><input type="checkbox" checked={addTomorrowTodo} onChange={(event) => setAddTomorrowTodo(event.target.checked)} /><span>同时加入明日任务</span></label><button className="home-save-review" onClick={submitReview}>{reviewSaved ? '已经收好今天' : '保存今天的复盘'}</button></div> : <p>三句话就够了：完成、消耗、明天。</p>}
         </article>
       </section>
 
-      <button className="home-chat-entry" onClick={() => onNavigate('chat')}><span>{isMobile ? '和流萤聊聊' : '想聊聊，或者让流萤帮你安排任务？'}</span><strong>{isMobile ? '聊天 →' : '进入独立对话 →'}</strong></button>
+      <button className="home-chat-entry" onClick={() => onNavigate('chat')}><span>想聊聊，或者让流萤帮你安排任务？</span><strong>进入独立对话 →</strong></button>
     </main>
   );
 }
 
 function EmptyLine({ text }: { text: string }) { return <div className="home-empty-line"><span>✦</span><p>{text}</p></div>; }
 function timeMinutes(value: string) { if (!value) return Number.MAX_SAFE_INTEGER; const [h,m] = value.split(':').map(Number); return h * 60 + m; }
-function useMobileHome() {
-  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 760px)').matches);
-  useEffect(() => {
-    const query = window.matchMedia('(max-width: 760px)');
-    const update = () => setMobile(query.matches);
-    query.addEventListener('change', update);
-    return () => query.removeEventListener('change', update);
-  }, []);
-  return mobile;
-}
-function getGreeting(name: string, english = false) { const hour = new Date().getHours(); const prefix = english ? (hour < 11 ? 'Good morning' : hour < 14 ? 'Good afternoon' : hour < 18 ? 'Good afternoon' : 'Good evening') : (hour < 11 ? '早上好' : hour < 14 ? '中午好' : hour < 18 ? '下午好' : '晚上好'); return `${prefix}${name ? `${english ? ', ' : '，'}${name}` : ''}`; }
-function formatFullDate(english = false) { return new Intl.DateTimeFormat(english ? 'en-US' : 'zh-CN', english ? { month:'long',day:'numeric',weekday:'long' } : {month:'long',day:'numeric',weekday:'long'}).format(new Date()); }
-function translateDailyKeyword(value: unknown) {
-  const translations: Record<string, string> = {
-    '稳住节奏': 'Steady', '重整装备': 'Reset', '向前一步': 'Forward',
-    '减少内耗': 'Inner Calm', '清理战场': 'Clear Space', '等待窗口': 'Right Timing',
-    '集中火力': 'Focus', '修复系统': 'Restore', '保持航线': 'Stay Course',
-    '点亮星图': 'Illuminate', '低噪声推进': 'Quiet Flow', '完成闭环': 'Complete',
-  };
-  return translations[String(value || '')] || '今日提示';
-}
+function getGreeting(name: string) { const hour = new Date().getHours(); const prefix = hour < 11 ? '早上好' : hour < 14 ? '中午好' : hour < 18 ? '下午好' : '晚上好'; return `${prefix}${name ? `，${name}` : ''}`; }
+function formatFullDate() { return new Intl.DateTimeFormat('zh-CN', { month:'long',day:'numeric',weekday:'long' }).format(new Date()); }
 function periodLabel(period: DailyBrief['period']) { return { morning: '晨间', afternoon: '午后', evening: '晚间' }[period]; }
 function getWeeklyNote(weekly: WeeklySummary | null) { if (!weekly) return '从今天开始，留下属于自己的节奏。'; if (weekly.focus_minutes >= 180) return '这一周投入得很扎实，也别忘了给恢复留时间。'; if (weekly.completed >= 5) return '你已经推动了不少事情，下一步是守住稳定节奏。'; return '不用追赶数字，先让每一天都有一个真实的小进展。'; }
 function shiftLocalDate(value: string, days: number) { const date = new Date(`${value}T12:00:00`); date.setDate(date.getDate() + days); return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-'); }

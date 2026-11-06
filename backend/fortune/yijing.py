@@ -119,7 +119,7 @@ def cast_yijing() -> dict[str, object]:
 
 
 def cast_daily_yijing(target_date: str | None = None) -> dict[str, object]:
-    """Return one reproducible day hexagram shared by every Firefly client."""
+    """Return one reproducible day hexagram that remains stable across app restarts."""
     date_key = target_date or date.today().isoformat()
     # Version the namespace so a future casting-method change can be explicit.
     rng = random.Random(f"firefly-daily-yijing-v1:{date_key}")

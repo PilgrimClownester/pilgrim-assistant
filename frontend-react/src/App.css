@@ -52,7 +52,3 @@
     display: none;
   }
 }
-
-@media (max-width: 760px) {
-  .sidebar { width: 74px; min-width: 74px; }
-}

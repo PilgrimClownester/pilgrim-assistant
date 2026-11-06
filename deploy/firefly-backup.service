@@ -1,8 +1,0 @@
-[Unit]
-Description=Back up Firefly data
-
-[Service]
-Type=oneshot
-User=ubuntu
-Group=ubuntu
-ExecStart=/usr/local/bin/firefly-backup

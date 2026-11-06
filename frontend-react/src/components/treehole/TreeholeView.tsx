@@ -17,5 +17,5 @@ function TreeholeView(){
  {revealed&&<section className="treehole-revealed"><header><b>来自过去的你</b><button onClick={()=>setRevealed('')}>重新合上</button></header><p>{revealed}</p><small>内容仍以密文保存，下次查看仍需密码。</small></section>}
  </main>;
 }
-function friendlyError(message:string){if(message.includes('423'))return '还没到约定的解锁时间。让它再安静地睡一会儿。';if(message.includes('429'))return '密码尝试次数过多，已暂时锁定 15 分钟。';if(message.includes('409'))return '检测到系统时间明显回退。请恢复正确时间后再试。';if(message.includes('400'))return '请求未通过：请检查密码或云端授权选项。';return message;}
+function friendlyError(message:string){if(message.includes('423'))return '还没到约定的解锁时间。让它再安静地睡一会儿。';if(message.includes('429'))return '密码尝试次数过多，已暂时锁定 15 分钟。';if(message.includes('409'))return '检测到系统时间明显回退。请恢复正确时间后再试。';if(message.includes('400'))return '请求未通过：请检查密码或本地授权选项。';return message;}
 export default TreeholeView;

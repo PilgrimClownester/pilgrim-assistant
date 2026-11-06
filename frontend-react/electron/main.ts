@@ -13,7 +13,7 @@ app.commandLine.appendSwitch('disable-gpu-compositing');
 const isDev = process.env.NODE_ENV !== 'production' && !app.isPackaged;
 const PET_WIDTH = 260;
 const PET_HEIGHT = 300;
-const DEV_SERVER_URL = 'http://localhost:5173';
+const DEV_SERVER_URL = process.env.FIREFLY_DEV_SERVER_URL || 'http://localhost:5173';
 
 let mainWindow: BrowserWindow | null = null;
 let petWindow: BrowserWindow | null = null;

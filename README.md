@@ -1,77 +1,72 @@
 # Firefly
 
-Firefly 是一个为个人长期使用而构建的 AI 助手：以服务器作为数据与智能中心，同时提供浏览器、手机和 Electron 桌面端，并保留一个可以停留在桌面的流萤桌宠。
+Firefly 是一个本地优先、可自行安装的开源 AI 桌面助手。它把对话、任务、日程、项目、复盘、长期记忆与传统文化工具放在同一个 Electron 桌面应用中，并提供可停留在桌面的轻量桌宠。
 
-它不是通用 SaaS，也不以社交或内容展示为目标。项目更关心三个问题：个人信息能否由自己掌控、常用功能能否在断网时继续工作，以及一个助手能否在长期使用中保持安静、连续和可解释。
+项目只提供桌面端，不包含手机 App、PWA、公网服务或云端账号体系。FastAPI 只监听 `127.0.0.1`，个人数据默认保存在仓库目录下的 `data/` 中。
 
-> 当前处于持续开发阶段。仓库包含完整实现，但不提供带有个人数据的公开演示账号。
+> 当前仍在迭代中。首次公开使用前请先阅读[数据与隐私](#数据与隐私)和[美术素材说明](ASSETS.md)。
 
-## 主要能力
+## 功能
 
-- **个人工作台**：待办、日程、习惯、目标、灵感、支出和项目进度集中管理。
-- **AI 对话**：保存云端会话上下文，并支持用户主动删除设备上的聊天记录。
-- **离线优先**：待办、日程和学习进度优先从 IndexedDB 加载；恢复网络后再与服务器合并。
-- **Edge AI Learning**：以阶段卡片组织学习目标、资料、Checklist、思考挑战与阶段成果。
-- **项目驾驶舱**：关联任务、里程碑、关键日程、风险、灵感和决策记录。
-- **每周复盘**：聚合一周的完成事项与状态，并生成可确认的下周行动。
-- **长期记忆**：记忆可以查看、修改、冻结或删除；只有明确允许的内容才会进入对话上下文。
-- **Electron 桌宠**：笔记本端保留原生桌面窗口与悬浮角色，Web 端则适配手机和普通浏览器。
+- AI 对话与可控长期记忆
+- 今日首页、Todo、日程和本地番茄钟
+- 万能收件箱与项目驾驶舱
+- 每日/每周复盘、习惯、目标、心情、支出和灵感
+- 八字、每日线索、塔罗与易经参考工具
+- 加密树洞和桌面悬浮角色
+- 聊天归档导出与整个 `data/` 目录备份
 
-传统文化与自我反思工具作为独立插件存在，不构成产品主入口，也不替代医疗、法律、投资或其他专业判断。
-
-## 架构
+## 技术结构
 
 ```text
-Browser / Mobile PWA ─┐
-                     ├── React + TypeScript ── FastAPI ── SQLite / files
-Electron + Companion ┘                              │
-                                                    └── AI API
+Electron + React + TypeScript
+             │ HTTP（仅 127.0.0.1）
+             ▼
+          FastAPI
+             │
+             ├── SQLite / JSON（data/）
+             └── OpenAI-compatible API
 ```
 
-- `frontend-react/`：React Web、移动端布局、离线缓存和 Electron 渲染层。
-- `backend/`：FastAPI 接口、认证、同步、对话与个人数据服务。
-- `frontend-react/electron/`：桌面窗口和桌宠相关能力。
-- `docs/`：架构、开发流程、设计系统、备份恢复与审查记录。
-- `data/`：运行期个人数据，不应提交到 Git。
+## 系统要求
 
-## 快速开始
+- Python 3.11+
+- Node.js 20+
+- npm
+- Linux 或 Windows 桌面环境
 
-### 桌面端
+Linux 部分发行版还需要 `python3-venv`。Electron 所需的 GTK/桌面运行库通常随桌面系统提供；最小化安装的 Linux 请参考[故障排查](docs/MAINTENANCE.md)。
 
-Windows：
+## 自动安装
+
+克隆仓库后运行安装器：
+
+Linux：
+
+```bash
+git clone https://github.com/your-name/firefly.git
+cd firefly
+chmod +x install.sh
+./install.sh
+```
+
+Windows PowerShell：
 
 ```powershell
-git clone https://github.com/PilgrimClownester/pilgrim-assistant.git
-cd pilgrim-assistant
-Copy-Item .env.example .env
-.\start_firefly.bat
+git clone https://github.com/your-name/firefly.git
+cd firefly
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-Linux / macOS：
+安装器会：
 
-```bash
-git clone https://github.com/PilgrimClownester/pilgrim-assistant.git
-cd pilgrim-assistant
-cp .env.example .env
-./start_firefly.sh
-```
+1. 检查 Python 与 Node.js 版本。
+2. 创建隔离的 `.venv` 并安装后端依赖。
+3. 使用 `npm ci` 安装锁定的前端依赖并执行生产构建。
+4. 从 `.env.example` 创建本地 `.env`，不会覆盖已有配置。
+5. 在 Linux 应用菜单或 Windows 开始菜单添加 Firefly 入口。
 
-启动器会准备前端依赖、启动 FastAPI，并打开 Electron 窗口。Windows 与 Linux 使用各自的 `node_modules`，避免双系统共享依赖造成二进制模块冲突。
-
-### Docker 服务器
-
-```bash
-cp .env.example .env
-# 编辑 .env，配置 API 密钥、认证和数据目录
-docker compose up -d --build
-docker compose ps
-```
-
-生产部署建议仅将容器端口绑定到 `127.0.0.1`，再由 Nginx/Caddy 提供 HTTPS、请求大小限制和安全响应头。
-
-## AI 配置
-
-在 `.env` 中配置兼容接口。不要把真实密钥提交到仓库：
+然后编辑 `.env`，填入兼容 OpenAI 接口的 API Key：
 
 ```env
 DEEPSEEK_API_KEY=replace_me
@@ -80,20 +75,54 @@ DEEPSEEK_MODEL=deepseek-v4-pro
 DEEPSEEK_FLASH_MODEL=deepseek-v4-flash
 ```
 
-Firefly 不要求本地部署大模型；当前主线通过远程 API 完成对话与解释性任务，确定性计算和数据整理尽量在本地代码中完成。
+对话使用 `DEEPSEEK_MODEL`，收件箱解析、创作、树洞和运势等其他模型功能使用 `DEEPSEEK_FLASH_MODEL`。
+
+没有 API Key 时，本地任务、日程、排盘和数据管理仍可使用；需要模型的功能会明确提示配置缺失。
+
+## 启动
+
+Linux：
+
+```bash
+./start_firefly.sh
+```
+
+Windows：
+
+```powershell
+.\start_firefly.bat
+```
+
+启动器会同时运行本地 FastAPI 服务与 Electron 窗口。关闭主窗口只会隐藏到托盘；请从托盘菜单选择“退出”以完整停止应用。
 
 ## 数据与隐私
 
-- `.env`、数据库、个人档案、聊天内容与备份均不应进入版本控制。
-- 普通页面采用登录后访问；敏感写作空间与主应用分离部署。
-- 离线同步使用更新时间与删除墓碑合并，避免删除的数据在其他设备上重新出现。
-- AI 长期记忆必须经过用户确认，并允许逐条撤回。
-- 部署前请生成独立的会话密钥和强密码，不要沿用示例值。
+- `.env`、聊天、档案、任务、数据库和备份均已加入 `.gitignore`。
+- 默认后端固定绑定 `127.0.0.1`，不要修改为局域网或公网地址。
+- 模型请求会携带当前功能所需的上下文；请自行阅读所用 API 服务商的隐私政策。
+- 树洞使用本地加密，但忘记密码后无法恢复。
+- 备份时完全退出 Firefly，然后复制整个 `data/` 目录。
 
-## 开发资料
+仓库只保留空目录占位文件，不应包含任何真实用户数据。发布 fork 前可运行：
 
-更完整的架构说明、UI 规范、备份恢复和维护流程见 [`docs/README.md`](docs/README.md)。
+```bash
+python3 scripts/check_public.py
+```
 
-## 项目状态
+## 开发
 
-Firefly 首先服务于作者自己的长期使用，因此接口和数据结构仍会随真实需求演进。欢迎阅读代码和提出建议；若基于本项目搭建自己的助手，请使用独立密钥、数据库和身份信息。
+```bash
+# Python 测试
+.venv/bin/python -m unittest discover -s tests -v
+
+# Electron / React 构建
+npm run build --prefix frontend-react
+```
+
+架构、接口、开发约定与维护说明位于 [`docs/`](docs/README.md)。欢迎通过 Issue 或 Pull Request 参与，提交前请阅读 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
+
+## 许可
+
+源代码使用 [MIT License](LICENSE)。角色插画、背景图、图标等素材不自动包含在 MIT 授权中，具体边界见 [ASSETS.md](ASSETS.md)。
+
+本项目中的运势功能仅用于传统文化体验与自我反思，不替代医疗、法律、财务或其他专业意见。

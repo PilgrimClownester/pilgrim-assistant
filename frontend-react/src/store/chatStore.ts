@@ -27,7 +27,7 @@ function greeting(): Message {
   return {
     id: 'greeting',
     role: 'assistant',
-    content: '我在，Pilgrim。\n\n你慢慢说，我听着。',
+    content: '我在。\n\n你慢慢说，我听着。',
     timestamp: Date.now(),
   };
 }
@@ -82,13 +82,13 @@ function cacheMessages(messages: Message[], clearedLocally = false): Promise<voi
     if (generation !== cacheWriteGeneration) return;
     try {
       await saveChatCache({
-        // 错误提示只属于当前设备，不上传；下一次联网时以云端交换记录为准。
+        // 错误提示只属于当前渲染会话，不写入后端归档。
         messages: messages.filter((message) => message.role !== 'error'),
         cachedAt: localTimestamp(),
         clearedLocally,
       });
     } catch {
-      // IndexedDB 不可用时，云端历史仍然可以正常工作。
+      // IndexedDB 不可用时，本地后端归档仍然可以正常工作。
     }
   });
   return cacheWriteQueue;
@@ -116,7 +116,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         set({ localChatCleared: cached.clearedLocally });
         if (cachedMessages.length) set({ messages: withGreeting(cachedMessages) });
       } catch {
-        // 没有本地缓存时继续尝试云端。
+        // 没有渲染层缓存时继续尝试从本地后端恢复。
       }
 
       if (!get().localChatCleared) {
@@ -131,7 +131,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
             set({ messages: [greeting()] });
           }
         } catch {
-          // 断网时保留 IndexedDB 中的最近对话；联网后下一次进入会继续拉取云端。
+          // 本地后端暂时不可用时，保留 IndexedDB 中的最近对话。
         }
       } else if (!cachedMessages.length) {
         set({ messages: [greeting()] });
@@ -203,7 +203,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const next = [greeting()];
     markChatLocallyCleared();
     set({ messages: next, error: null, localChatCleared: true });
-    // 只清除本机 IndexedDB；服务器上的聊天归档保持不变，且本机不再自动加载旧云端记录。
+    // 只清除 Electron 渲染层缓存；后端归档保持不变，且不再自动加载旧记录。
     void cacheMessages(next, true);
   },
 }));

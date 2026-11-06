@@ -5,17 +5,15 @@
 - Python 3.11 及以上
 - Node.js 20 及以上
 - npm
-- Linux/macOS/Windows 均可运行；Android 是 Capacitor 壳层
+- Linux 和 Windows 是当前支持的桌面环境
 
 安装：
 
 ```bash
-python3 -m pip install -r requirements.txt
-cd frontend-react
-npm install
+./install.sh
 ```
 
-项目启动器会把 `frontend-react/node_modules` 指向 `.deps/<platform>-node_modules`。Windows 和 Linux 不应共用同一个原生 Node 依赖目录。
+Windows 使用 `install.ps1`。如果在双系统中共享源码目录，切换系统后应重新运行当前系统的安装器；不要共用 `node_modules`。
 
 ## 2. 启动
 
@@ -34,7 +32,7 @@ Windows：
 单独调试：
 
 ```bash
-python3 -m uvicorn backend.main:app --reload --port 8000
+.venv/bin/python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 cd frontend-react
 npm run dev
 ```
@@ -49,10 +47,10 @@ curl http://127.0.0.1:8000/health
 
 ```bash
 # Python 语法和导入
-python3 -m compileall -q backend run_firefly.py
+.venv/bin/python -m compileall -q backend run_firefly.py
 
 # 隔离数据目录的功能回归
-python3 -m unittest discover -s tests -v
+.venv/bin/python -m unittest discover -s tests -v
 
 # React、TypeScript、Vite 和 Electron 构建
 cd frontend-react
@@ -71,7 +69,7 @@ npm run build
 4. 在 `src/api/client.ts` 增加带明确返回类型的方法。
 5. 建立独立页面或复用共享组件，并在 `PageId`、侧栏和 `App.tsx` 注册入口。
 6. 为创建、读取、关联、撤销或删除补回归测试。
-7. 执行全部质量门槛，并在桌面和 390px 移动视口各检查一次。
+7. 执行全部质量门槛，并在 Electron 最小尺寸与默认尺寸各检查一次。
 
 不要让页面直接依赖 SQLite/JSON 结构，也不要让 API 返回只有当前组件才理解的临时形状。
 
@@ -100,5 +98,6 @@ npm run build
 - [ ] 新接口有输入上限和清晰错误码。
 - [ ] 用户数据写入是原子的，撤销/删除语义明确。
 - [ ] 空数据和后端离线时页面仍可解释，不会白屏。
-- [ ] 桌面、窄屏和手机底部导航可访问。
+- [ ] Electron 最小窗口下所有功能可访问。
+- [ ] `python3 scripts/check_public.py` 通过。
 - [ ] 文档与测试同步更新。

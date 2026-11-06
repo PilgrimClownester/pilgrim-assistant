@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import FrostedCard from '../shared/FrostedCard';
-import { createMemory, deleteMemory, exportChatArchive, getMemories, getProfile, logout, postBaziChart, saveProfile, updateMemory } from '../../api/client';
+import { createMemory, deleteMemory, exportChatArchive, getMemories, getProfile, postBaziChart, saveProfile, updateMemory } from '../../api/client';
 import type { BirthInfo, CompanionMemory, UserProfile } from '../../types';
 import BaziChartView from './BaziChartView';
 import './SettingsView.css';
@@ -61,11 +61,6 @@ function SettingsView() {
     await saveProfile(profile);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-  };
-
-  const handleLogout = async () => {
-    await logout().catch(() => undefined);
-    window.dispatchEvent(new Event('firefly:logout'));
   };
 
   const update = (key: keyof UserProfile, value: string | number | boolean | null) => {
@@ -166,7 +161,6 @@ function SettingsView() {
       <div style={headerStyle}>
         <h2 style={titleStyle}>设置</h2>
         <div className="settings-header-actions">
-          <button type="button" className="settings-logout-button" onClick={handleLogout}>退出登录</button>
           <button type="button" onClick={handleSave} style={primaryButtonStyle}>{saved ? '已保存' : '保存档案'}</button>
         </div>
       </div>
@@ -292,9 +286,9 @@ function SettingsView() {
         <FrostedCard className="settings-data-archive" style={{ padding: 22 }}>
           <div className="settings-archive-heading">
             <div>
-              <span>CLOUD DATA</span>
+              <span>LOCAL DATA</span>
               <h3>数据与聊天归档</h3>
-              <p>聊天会自动保存到云端，重新打开或换设备也会接着显示；断网时保留本机缓存。Todo、日程和占卜结果由电脑在两端共享。</p>
+              <p>聊天、Todo、日程与占卜结果都保存在这台电脑的 data 目录中。你可以随时导出聊天记录，或直接备份整个数据目录。</p>
             </div>
             <button type="button" onClick={downloadChatArchive} className="settings-archive-button">导出聊天记录</button>
           </div>

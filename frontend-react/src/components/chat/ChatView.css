@@ -49,10 +49,6 @@
   gap: 2px;
 }
 
-.chat-mobile-identity {
-  display: none;
-}
-
 .chat-header-eyebrow {
   color: var(--text-soft);
   font-size: 0.62rem;
@@ -313,13 +309,4 @@
 .chat-send-btn:disabled {
   opacity: 0.36;
   cursor: not-allowed;
-}
-
-@media (max-width: 760px) {
-  .chat-header,
-  .message-list,
-  .chat-input-bar { padding-inline: 16px; }
-  .message-content { max-width: 82%; }
-  .chat-header-eyebrow { display: none; }
-  .message-learning-actions { opacity: .72; }
 }

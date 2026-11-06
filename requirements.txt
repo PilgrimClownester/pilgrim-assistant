@@ -1,10 +1,8 @@
 fastapi
+httpx2>=2.12,<3
 uvicorn
 openai
 python-dotenv
 pydantic
-streamlit
-requests
 lunar_python
-pillow
 cryptography>=42.0

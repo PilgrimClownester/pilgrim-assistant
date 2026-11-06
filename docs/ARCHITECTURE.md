@@ -1,101 +1,84 @@
 # Firefly 架构说明
 
-更新时间：2026-08-08
+更新时间：2026-09-09
 
-## 1. 运行结构
-
-```text
-Electron 主窗口 ─┐
-桌面浏览器       ├─ Vite / React UI ─ HTTP ─ FastAPI ─ 领域模块 ─ data/
-蒲公英手机浏览器 ┘       │                  │
-                         └─ /api 代理 ──────┘
-```
-
-生产环境以服务器为中心：FastAPI 与业务数据常驻服务器；手机直接打开 Web 应用，笔记本 Electron 保留主窗口与透明桌宠窗口并连接同一服务。
-
-### 离线数据流
+## 运行结构
 
 ```text
-React UI → IndexedDB → 立即更新界面
-                    └→ 在线时 POST /sync/productivity → 服务器 data/
-Service Worker → 缓存应用外壳和静态资源
+Electron 主窗口 ── React UI ── HTTP / 127.0.0.1 ── FastAPI ── 领域模块 ── data/
+        └── 透明桌宠窗口
 ```
 
-- 待办、日程使用 `updated_at` 与删除墓碑做双向合并。
-- Edge AI 阶段完成状态先写入本地 pending，再按阶段补交服务器。
-- 已成功登录的设备保存“可信设备”标记；断网时允许进入本地缓存，但不保存密码。
-- 对话、模型调用和占卜不提供离线模拟。
+`install.sh` / `install.ps1` 创建隔离环境、安装依赖并验证构建。`run_firefly.py` 清理当前项目遗留进程，启动 FastAPI 与 Electron，并在退出时收尾。
 
-- `run_firefly.py` 是统一启动器：选择当前系统的 Node 依赖、清理旧进程、启动后端、桌面端以及可选的蒲公英手机入口。
-- Electron 开发窗口加载 `http://localhost:5173`；手机入口使用 `web` mode 和 `5174` 端口。
-- 两个 Vite 实例必须使用不同缓存目录，配置在 `frontend-react/vite.config.ts`，否则会出现 `504 Outdated Optimize Dep` 白屏。
-- FastAPI 默认只监听 `127.0.0.1:8000`。手机浏览器通过 Vite `/api` 反向代理访问后端。
+FastAPI 固定监听本机回环地址。项目不提供手机、PWA、容器或公网入口；若改变这个边界，必须重新设计身份认证、HTTPS、来源限制和秘密管理。
 
-## 2. 后端模块边界
+### 本地数据流
+
+```text
+React UI → IndexedDB 渲染缓存 → 立即更新界面
+                    └→ FastAPI → 本机 data/
+```
+
+- `data/` 是持久化数据源，IndexedDB 用于降低渲染延迟和短暂后端故障时的体验降级。
+- 待办与日程保留 `updated_at` 和删除墓碑，用于安全合并本地缓存。
+- 对话和需要模型的功能依赖外部 API；确定性计算、数据整理和排盘尽量留在本地。
+- Electron 渲染层加载 `http://localhost:5173`，FastAPI 默认使用 `127.0.0.1:8000`。
+
+## 后端模块
 
 | 模块 | 责任 | 主要存储 |
 | --- | --- | --- |
-| `backend/main.py` | HTTP 路由、请求模型编排、聊天工具调度 | 无直接所有权 |
-| `backend/productivity.py` | 待办、日程、同步墓碑 | `productivity.json` |
-| `backend/companion.py` | 日复盘、长期记忆、专注记录 | 三个 JSON 文件 |
-| `backend/daily_brief.py` | 聚合现有领域数据，生成不调用模型的早/午/晚摘要 | 无直接所有权 |
-| `backend/learning.py` | 本地识别学习候选、安全过滤、确认/拒绝和周统计 | `learning.json`；确认后调用 `companion.py` |
+| `backend/main.py` | HTTP 路由、请求编排、聊天工具调度 | 无直接所有权 |
+| `backend/productivity.py` | 待办、日程与缓存合并 | `productivity.json` |
+| `backend/companion.py` | 日复盘、长期记忆、专注记录 | JSON 文件 |
+| `backend/daily_brief.py` | 不调用模型的早/午/晚摘要 | 无直接所有权 |
+| `backend/learning.py` | 学习候选、确认/拒绝和周统计 | `learning.json` |
 | `backend/growth.py` | 心情、支出、习惯、目标、灵感 | `growth.db` |
-| `backend/workspace.py` | 万能收件箱、项目驾驶舱、周复盘 | `workspace.db`，并关联其他模块 |
-| `backend/treehole.py` | AES-GCM 加密时间胶囊、尝试限流 | `data/treehole/` |
+| `backend/workspace.py` | 收件箱、项目驾驶舱、周复盘 | `workspace.db` |
+| `backend/treehole.py` | AES-GCM 加密时间胶囊 | `data/treehole/` |
 | `backend/profile.py` | 用户档案和出生信息 | `profile.json` |
 | `backend/chat_archive.py` | 对话归档 | `chat_archive.jsonl` |
 | `backend/fortune/` | 日运、塔罗、易经和结果存档 | Fortune JSON 文件 |
 
-领域模块应承担校验、持久化和派生字段计算；路由层只负责 HTTP 状态码与编排。后续拆分 `main.py` 时，优先按 `productivity`、`workspace`、`growth`、`fortune` 创建 `APIRouter`，不要把业务逻辑再复制一份。
+领域模块承担校验、持久化与派生字段计算；路由层只负责 HTTP 语义和编排。数据写入使用锁、同目录临时文件和 `os.replace`，SQLite 使用事务与 WAL。
 
-## 3. 前端模块边界
+## 前端模块
 
 | 目录 | 责任 |
 | --- | --- |
 | `src/App.tsx` | 页面选择、主布局和全局 overlay |
-| `src/components/layout/` | 侧栏、右侧面板、三栏框架 |
-| `src/components/home/` | 今日首页聚合视图 |
-| `src/components/inbox/` | 普通收纳解析/撤销，以及学习候选的编辑、确认和忽略 |
+| `src/components/layout/` | 侧栏、右侧面板和主框架 |
+| `src/components/home/` | 今日首页与学习视图 |
+| `src/components/inbox/` | 收件箱解析、确认和撤销 |
 | `src/components/projects/` | 项目驾驶舱和跨领域关联 |
-| `src/components/review/` | 周数据聚合、复盘文字与计划确认 |
-| `src/components/shared/` | 图标、错误边界、玻璃卡片等跨页面原语 |
+| `src/components/review/` | 周数据聚合、复盘与计划确认 |
+| `src/components/shared/` | 图标、错误边界和共享原语 |
 | `src/api/client.ts` | 唯一 HTTP 出口 |
-| `src/types/index.ts` | 前端共享数据契约与导航类型 |
-| `src/styles/` | 全局令牌、基础样式、动画、移动端和 finish layer |
+| `src/types/index.ts` | 数据契约与导航类型 |
+| `src/styles/` | 全局令牌、基础样式、动画与 finish layer |
 
-页面组件可以拥有布局，不能自行发明新的品牌色、阴影或玻璃透明度。跨页面视觉决策放入 `firefly-theme.css` 或 `polish.css`。
+页面组件可以拥有布局，但跨页面色彩、阴影、玻璃材质与动效应集中在设计系统中。
 
-## 4. 数据关系
+## 数据关系
 
-项目本身保存在 `workspace.db`，只保存待办、日程和灵感的 ID：
+项目保存在 `workspace.db`，只引用待办、日程和灵感的 ID：
 
 ```text
 Project
  ├─ task_ids  ──> productivity.todos
  ├─ event_ids ──> productivity.schedule
  ├─ idea_ids  ──> growth.ideas
- ├─ milestones / risks / decisions / links（项目内嵌）
+ ├─ milestones / risks / decisions / links
  └─ 派生：progress、days_left、open_risks、weekly_completed
 ```
 
-删除普通项目默认保留关联任务和日程；收件箱刚创建项目后的“撤销”会删除该次操作一并创建的子项。修改这条语义时必须同步更新接口、UI 提示和回归测试。
+删除普通项目默认保留关联任务和日程；撤销收件箱写入会删除该次操作一并创建的子项。
 
-## 5. 持久化原则
+## 隐私边界
 
-- JSON 更新采用“临时文件写完后 `os.replace`”的原子替换方式。
-- SQLite 启用 WAL 与 `synchronous=FULL`；一次写操作放在事务中。
-- 私密树洞只保存密文、salt、nonce 和元数据，不进入聊天归档或记忆。
-- 学习候选与长期记忆分开保存；只有用户确认动作可以把候选复制到 `memories.json`。
-- 测试必须把所有存储路径替换到临时目录，禁止读取或修改真实 `data/`。
-- 不要在组件里直接读写业务 JSON；所有业务数据都经过后端接口。
-
-## 6. 聊天上下文
-
-`POST /chat` 会组合人格、个人档案、允许用于对话且未冻结的长期记忆、任务/日程、成长数据和项目摘要。新增上下文时要限制条数和长度，避免把完整数据库拼进 prompt；树洞内容、`use_in_chat=false` 的记忆和冻结记忆永远不能进入该链路。
-
-聊天归档完成后，`learning.py` 会用本地规则观察本条用户输入。命中规则只创建 `pending` 候选，不读取助手回复、不调用外部模型，也不改变当前 prompt。确认发生在万能收件箱；确认后的记忆从下一轮对话起按 `use_in_chat` 与冻结状态参与上下文。敏感字符串、树洞与运势主题在候选创建入口统一拦截。
-
-“今日萤火”与聊天上下文是两条独立链路：前者只在 Firefly 后端用确定性规则读取聚合数据，不调用外部模型。关闭“用于对话”的活动记忆仍可作为每日记忆回声出现；冻结记忆在两条链路中都暂停使用。
-
-“今日运势”是第三条独立链路：`fortune/yijing.py` 用日期稳定的三枚钱币法生成日卦，`daily_brief.py` 提供裁剪后的当日现实快照，随后 DeepSeek 只负责解释二者的关系。日卦和最终回答一起按日期缓存；真实任务不会参与起卦，也不会造成反复刷新变卦。
+- `.env`、`data/` 和备份不得进入版本控制。
+- 树洞明文、冻结记忆以及 `use_in_chat=false` 的记忆不得进入模型上下文。
+- `/chat` 只拼接有数量与长度上限的档案、记忆、任务、成长和项目摘要。
+- 真实存储路径在测试中必须替换为临时目录。
+- 第一次公开发布应使用干净快照，详见 `PUBLISHING.md`。

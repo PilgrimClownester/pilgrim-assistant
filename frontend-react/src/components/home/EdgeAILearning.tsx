@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getEdgeAILearningProgress, updateEdgeAIStage, updateEdgeAITask } from '../../api/client';
 import './EdgeAILearning.css';
 
@@ -39,18 +39,14 @@ const checklistByStage: Record<number, string[]> = {
 
 export default function EdgeAILearning() {
   const [completed, setCompleted] = useState<string[]>([]);
-  const [active, setActive] = useState(0);
   const [saving, setSaving] = useState<string | null>(null);
   const [taskChecks, setTaskChecks] = useState<Record<string,string[]>>({});
-  const touchStart = useRef<{ x:number; y:number } | null>(null);
   const completedSet = useMemo(() => new Set(completed), [completed]);
 
   useEffect(() => {
     getEdgeAILearningProgress().then((state) => {
       setCompleted(state.completed);
       setTaskChecks(state.task_checks);
-      const next = stages.findIndex((stage) => !state.completed.includes(stage.id));
-      setActive(next < 0 ? stages.length - 1 : next);
     }).catch(() => {});
   }, []);
 
@@ -73,10 +69,6 @@ export default function EdgeAILearning() {
     try {
       const state = await updateEdgeAIStage(stage.id, done);
       setCompleted(state.completed);
-      if (done) {
-        const next = stages.findIndex((item, index) => index > stage.number - 1 && !state.completed.includes(item.id));
-        if (next >= 0) setActive(next);
-      }
     } catch {
       setCompleted((current) => done ? current.filter((id) => id !== stage.id) : [...current, stage.id]);
     } finally { setSaving(null); }
@@ -97,8 +89,6 @@ export default function EdgeAILearning() {
     }
   };
 
-  const move = (delta: number) => setActive((current) => (current + delta + stages.length) % stages.length);
-
   return <section className="edge-learning" aria-label="Edge AI Learning 八月学习规划">
     <div className="edge-desktop-plan">
       {['AI 计算基础','Accelerator 架构','科研能力培养'].map((group) => <div className="edge-phase" key={group}>
@@ -109,13 +99,10 @@ export default function EdgeAILearning() {
       </div>)}
     </div>
 
-    <div className="edge-mobile-plan" onTouchStart={(event) => { const touch=event.touches[0]; touchStart.current={x:touch.clientX,y:touch.clientY}; }} onTouchEnd={(event) => { const start=touchStart.current; const touch=event.changedTouches[0]; touchStart.current=null; if(!start)return; const dx=touch.clientX-start.x; const dy=touch.clientY-start.y; if(Math.abs(dx)>48 && Math.abs(dx)>Math.abs(dy)*1.2) move(dx<0 ? 1 : -1); }}>
-      <StageCard key={stages[active].id} stage={stages[active]} done={completedSet.has(stages[active].id)} saving={saving === stages[active].id} checkedTasks={taskChecks[stages[active].id] || []} onTask={(taskId) => toggleTask(stages[active],taskId)} onToggle={() => toggle(stages[active])} expandedQuestions />
-    </div>
   </section>;
 }
 
-function StageCard({ stage, done, saving, checkedTasks, onTask, onToggle, expandedQuestions=false }: { stage:Stage; done:boolean; saving:boolean; checkedTasks:string[]; onTask:(taskId:string)=>void; onToggle:()=>void; expandedQuestions?:boolean }) {
+function StageCard({ stage, done, saving, checkedTasks, onTask, onToggle }: { stage:Stage; done:boolean; saving:boolean; checkedTasks:string[]; onTask:(taskId:string)=>void; onToggle:()=>void }) {
   const tasks = checklistByStage[stage.number];
   const allTasksDone = checkedTasks.length === tasks.length;
   return <article className={`edge-stage-card${done ? ' is-done' : ''}`}>
@@ -125,7 +112,7 @@ function StageCard({ stage, done, saving, checkedTasks, onTask, onToggle, expand
     <div className="edge-tags">{stage.topics.map((topic) => <i key={topic}>{topic}</i>)}</div>
     <dl><div><dt>RESEARCH MATERIAL</dt><dd>{stage.resource}</dd></div></dl>
     <section className="edge-checklist"><header><span>学习任务</span><em>{checkedTasks.length} / {tasks.length}</em></header><div>{tasks.map((task,index) => { const taskId=`${stage.id}-task-${index+1}`; const checked=checkedTasks.includes(taskId); return <button key={taskId} className={checked ? 'is-checked' : ''} onClick={() => onTask(taskId)}><i>{checked ? '✓' : ''}</i><span>{task}</span></button>; })}</div></section>
-    <details className="edge-questions" open={expandedQuestions}><summary>掌握标准 / 思考挑战 <span>{stage.questions.length}</span></summary><ol>{stage.questions.map((question) => <li key={question}>{question}</li>)}</ol></details>
+    <details className="edge-questions"><summary>掌握标准 / 思考挑战 <span>{stage.questions.length}</span></summary><ol>{stage.questions.map((question) => <li key={question}>{question}</li>)}</ol></details>
     <section className={`edge-deliverable${allTasksDone ? ' is-unlocked' : ''}`}><span>STAGE DELIVERABLE</span><small>阶段成果</small><strong>{stage.output}</strong><p>{allTasksDone ? 'Checklist 已完成，可以提交阶段成果。' : '完成 Checklist 后解锁阶段成果提交。'}</p></section>
     <button className="edge-complete" disabled={saving || (!allTasksDone && !done)} onClick={onToggle}><i>{done || allTasksDone ? '✓' : ''}</i><span>{done ? '阶段已完成' : allTasksDone ? '提交阶段成果' : '继续完成任务'}</span><b>{checkedTasks.length} / {tasks.length}</b></button>
   </article>;

@@ -14,6 +14,12 @@ data/daily_fortune.tmp
 data/chat_archive.jsonl
 data/fortune_results.json
 data/fortune_results.tmp
+data/reflections.json
+data/memories.json
+data/focus_sessions.json
+data/learning.json
+data/edge_ai_learning.json
+data/*.tmp
 data/qq_bot_sessions.json
 data/growth.json
 data/growth.db
@@ -29,8 +35,10 @@ backend/db/*.db
 
 # dependencies
 node_modules/
+frontend-react/node_modules
 frontend-react/node_modules/
 frontend-react/.deps/
+frontend-react/android/
 
 # build outputs
 dist/

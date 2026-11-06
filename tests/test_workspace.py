@@ -143,7 +143,7 @@ class WorkspaceApiTests(IsolatedDataTestCase):
         self.assertIsNone(learning.observe_user_message("我喜欢塔罗占卜"))
         self.assertEqual(self.client.get("/learning/candidates").json()["items"], [])
         self.assertEqual(
-            self.client.post("/learning/feedback", json={"kind": "remember", "content": "邮箱 pilgrim@example.com"}).status_code,
+            self.client.post("/learning/feedback", json={"kind": "remember", "content": "邮箱 user@example.com"}).status_code,
             400,
         )
 

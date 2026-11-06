@@ -62,8 +62,8 @@ def list_chat_archive(limit: int = 500) -> list[dict[str, Any]]:
 def list_chat_messages(limit: int = 500) -> list[dict[str, Any]]:
     """把交换记录展开成聊天界面可以直接恢复的消息列表。
 
-    归档文件以一问一答为单位存储，接口层再展开为消息，便于网页、桌面端和
-    手机端从同一份服务器数据恢复对话。旧记录没有单条消息时间时，沿用交换
+    归档文件以一问一答为单位存储，接口层再展开为消息，便于 Electron
+    渲染层从同一份本地数据恢复对话。旧记录没有单条消息时间时，沿用交换
     的 ``created_at``。
     """
     message_limit = max(1, min(limit, 5000))

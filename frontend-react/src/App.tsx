@@ -21,7 +21,6 @@ import WeeklyReviewView from './components/review/WeeklyReviewView';
 import NetworkStatus from './components/shared/NetworkStatus';
 import type { PageId } from './types';
 import './App.css';
-import './styles/mobile.css';
 import './styles/polish.css';
 
 function App() {

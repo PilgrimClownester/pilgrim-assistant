@@ -61,7 +61,7 @@ function MessageBubble({ message }: MessageBubbleProps) {
       </div>
       {isUser && (
         <div className="message-avatar message-avatar--user">
-          <div className="avatar-placeholder">P</div>
+          <div className="avatar-placeholder">你</div>
         </div>
       )}
     </div>
